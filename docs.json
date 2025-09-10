@@ -1,14 +1,14 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "WhatsApp SDK Docs",
-  "site": "WhatsApp SDK Documentation",
+  "name": "Me SDK Docs",
+  "site": "Me SDK Documentation",
   "colors": {
     "primary": "#25D366",
     "light": "#4ADE80",
     "dark": "#16A34A"
   },
-  "favicon": "https://wazap.dev/favicon.svg",
+  "favicon": "/favicon.svg",
   "navigation": {
     "tabs": [
       {
