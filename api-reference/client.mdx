@@ -1,0 +1,603 @@
+---
+title: "WhatsApp Client API"
+description: "Complete API reference for the WhatsAppClient class with all methods, parameters, and examples"
+---
+
+# WhatsApp Client API
+
+The `WhatsAppClient` class is the main interface for interacting with the WhatsApp Business API. It provides methods for sending messages, managing media, and handling webhooks.
+
+## Constructor
+
+### WhatsAppClient(config)
+
+Creates a new WhatsApp client instance.
+
+```typescript
+constructor(config: WhatsAppConfig)
+```
+
+**Parameters:**
+- `config` (WhatsAppConfig): Client configuration object
+
+**Example:**
+```typescript
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  timeout: 30000,
+  apiVersion: 'v23.0'
+});
+```
+
+## Message Sending Methods
+
+### sendText(to, text, options?)
+
+Sends a text message to a WhatsApp user.
+
+```typescript
+async sendText(
+  to: string, 
+  text: string, 
+  options?: TextOptions
+): Promise<MessageResponse>
+```
+
+**Parameters:**
+- `to` (string): Recipient phone number in international format
+- `text` (string): Message text (max 4,096 characters)
+- `options` (TextOptions, optional): Additional options
+
+**TextOptions:**
+```typescript
+interface TextOptions {
+  previewUrl?: boolean;      // Enable URL preview
+  replyToMessageId?: string; // Reply to specific message
+}
+```
+
+**Example:**
+```typescript
+const response = await client.sendText(
+  '+1234567890',
+  'Hello! Check out https://example.com',
+  { previewUrl: true }
+);
+```
+
+### sendImage(to, image, options?)
+
+Sends an image message.
+
+```typescript
+async sendImage(
+  to: string,
+  image: ImageMedia,
+  options?: MessageOptions
+): Promise<MessageResponse>
+```
+
+**Parameters:**
+- `to` (string): Recipient phone number
+- `image` (ImageMedia): Image data
+- `options` (MessageOptions, optional): Additional options
+
+**ImageMedia:**
+```typescript
+interface ImageMedia {
+  id?: string;        // Media ID from upload
+  link?: string;      // Direct URL to image
+  caption?: string;   // Image caption (max 1,024 chars)
+}
+```
+
+**Example:**
+```typescript
+// Send from URL
+await client.sendImage('+1234567890', {
+  link: 'https://example.com/image.jpg',
+  caption: 'Beautiful sunset!'
+});
+
+// Send uploaded media
+const media = await client.uploadMedia(imageBuffer, 'image');
+await client.sendImage('+1234567890', {
+  id: media.id,
+  caption: 'Uploaded image'
+});
+```
+
+### sendVideo(to, video, options?)
+
+Sends a video message.
+
+```typescript
+async sendVideo(
+  to: string,
+  video: VideoMedia,
+  options?: MessageOptions
+): Promise<MessageResponse>
+```
+
+**VideoMedia:**
+```typescript
+interface VideoMedia {
+  id?: string;
+  link?: string;
+  caption?: string;
+}
+```
+
+### sendAudio(to, audio, options?)
+
+Sends an audio message.
+
+```typescript
+async sendAudio(
+  to: string,
+  audio: AudioMedia,
+  options?: MessageOptions
+): Promise<MessageResponse>
+```
+
+**AudioMedia:**
+```typescript
+interface AudioMedia {
+  id?: string;
+  link?: string;
+}
+```
+
+### sendDocument(to, document, options?)
+
+Sends a document file.
+
+```typescript
+async sendDocument(
+  to: string,
+  document: DocumentMedia,
+  options?: MessageOptions
+): Promise<MessageResponse>
+```
+
+**DocumentMedia:**
+```typescript
+interface DocumentMedia {
+  id?: string;
+  link?: string;
+  filename?: string;  // Display filename
+  caption?: string;
+}
+```
+
+### sendButtons(to, text, buttons, options?)
+
+Sends an interactive message with buttons.
+
+```typescript
+async sendButtons(
+  to: string,
+  text: string,
+  buttons: Button[],
+  options?: InteractiveOptions
+): Promise<MessageResponse>
+```
+
+**Parameters:**
+- `buttons` (Button[]): Array of buttons (max 3)
+
+**Button:**
+```typescript
+interface Button {
+  id: string;     // Button ID (max 256 chars)
+  title: string;  // Button text (max 20 chars)
+}
+```
+
+**Example:**
+```typescript
+await client.sendButtons(
+  '+1234567890',
+  'Choose an option:',
+  [
+    { id: 'yes', title: 'Yes' },
+    { id: 'no', title: 'No' },
+    { id: 'maybe', title: 'Maybe' }
+  ],
+  {
+    header: { type: 'text', text: 'Confirmation' },
+    footer: 'Please select one'
+  }
+);
+```
+
+### sendList(to, text, buttonText, sections, options?)
+
+Sends an interactive list message.
+
+```typescript
+async sendList(
+  to: string,
+  text: string,
+  buttonText: string,
+  sections: ListSection[],
+  options?: InteractiveOptions
+): Promise<MessageResponse>
+```
+
+**ListSection:**
+```typescript
+interface ListSection {
+  title: string;      // Section title (max 24 chars)
+  rows: ListRow[];    // Section rows
+}
+
+interface ListRow {
+  id: string;           // Row ID (max 200 chars)
+  title: string;        // Row title (max 24 chars)
+  description?: string; // Row description (max 72 chars)
+}
+```
+
+### sendTemplate(to, templateName, languageCode, components?)
+
+Sends a template message.
+
+```typescript
+async sendTemplate(
+  to: string,
+  templateName: string,
+  languageCode: string,
+  components?: TemplateComponent[]
+): Promise<MessageResponse>
+```
+
+### sendLocation(to, latitude, longitude, options?)
+
+Sends a location message.
+
+```typescript
+async sendLocation(
+  to: string,
+  latitude: number,
+  longitude: number,
+  options?: LocationOptions
+): Promise<MessageResponse>
+```
+
+**LocationOptions:**
+```typescript
+interface LocationOptions {
+  name?: string;     // Location name
+  address?: string;  // Location address
+}
+```
+
+### sendContacts(to, contacts, options?)
+
+Sends contact information.
+
+```typescript
+async sendContacts(
+  to: string,
+  contacts: Contact[],
+  options?: MessageOptions
+): Promise<MessageResponse>
+```
+
+### sendSticker(to, sticker, options?)
+
+Sends a sticker message.
+
+```typescript
+async sendSticker(
+  to: string,
+  sticker: StickerMedia,
+  options?: MessageOptions
+): Promise<MessageResponse>
+```
+
+## Media Management Methods
+
+### uploadMedia(file, type)
+
+Uploads a media file to WhatsApp servers.
+
+```typescript
+async uploadMedia(
+  file: Buffer | string,
+  type: 'image' | 'video' | 'audio' | 'document'
+): Promise<MediaResponse>
+```
+
+**Parameters:**
+- `file` (Buffer | string): File buffer or file path
+- `type` (string): Media type
+
+**Returns:**
+```typescript
+interface MediaResponse {
+  id: string; // Media ID for reuse
+}
+```
+
+**Example:**
+```typescript
+const fileBuffer = fs.readFileSync('./image.jpg');
+const media = await client.uploadMedia(fileBuffer, 'image');
+console.log('Media ID:', media.id);
+```
+
+### getMediaInfo(mediaId)
+
+Gets information about uploaded media.
+
+```typescript
+async getMediaInfo(mediaId: string): Promise<MediaInfo>
+```
+
+**Returns:**
+```typescript
+interface MediaInfo {
+  url: string;        // Download URL (temporary)
+  mime_type: string;  // File MIME type
+  sha256: string;     // File hash
+  file_size: number;  // Size in bytes
+  id: string;         // Media ID
+}
+```
+
+### downloadMedia(mediaId)
+
+Downloads media content as a buffer.
+
+```typescript
+async downloadMedia(mediaId: string): Promise<Buffer>
+```
+
+**Example:**
+```typescript
+const mediaInfo = await client.getMediaInfo('media_id');
+const buffer = await client.downloadMedia('media_id');
+fs.writeFileSync('./downloaded_file.ext', buffer);
+```
+
+## Webhook Methods
+
+### verifyWebhook(mode, token, challenge)
+
+Verifies webhook subscription requests.
+
+```typescript
+verifyWebhook(
+  mode: string,
+  token: string,
+  challenge: string
+): string | null
+```
+
+**Parameters:**
+- `mode` (string): Hub mode from query parameters
+- `token` (string): Verify token from query parameters  
+- `challenge` (string): Challenge string from query parameters
+
+**Returns:**
+- Challenge string if verification succeeds
+- `null` if verification fails
+
+### parseWebhook(payload)
+
+Parses incoming webhook messages.
+
+```typescript
+parseWebhook(payload: any): ProcessedIncomingMessage[]
+```
+
+**Returns:**
+Array of processed incoming messages
+
+### createWebhookProcessor(handlers)
+
+Creates a framework-agnostic webhook processor.
+
+```typescript
+createWebhookProcessor(handlers: WebhookHandlers): WebhookProcessor
+```
+
+**Example:**
+```typescript
+const processor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    console.log('Text:', message.text);
+  },
+  onError: async (error) => {
+    console.error('Error:', error.message);
+  }
+});
+```
+
+## Utility Methods
+
+### testConnection()
+
+Tests connectivity to the WhatsApp API.
+
+```typescript
+async testConnection(): Promise<boolean>
+```
+
+**Returns:**
+- `true` if connection is successful
+- `false` if connection fails
+
+**Example:**
+```typescript
+const isConnected = await client.testConnection();
+if (isConnected) {
+  console.log('✅ WhatsApp API is accessible');
+} else {
+  console.log('❌ Cannot connect to WhatsApp API');
+}
+```
+
+### getConfig()
+
+Gets the current client configuration (with masked sensitive data).
+
+```typescript
+getConfig(): Partial<WhatsAppConfig>
+```
+
+**Example:**
+```typescript
+const config = client.getConfig();
+console.log(config);
+// Output: { accessToken: '***', phoneNumberId: '123...', timeout: 30000 }
+```
+
+## Response Types
+
+### MessageResponse
+
+Standard response for message sending operations.
+
+```typescript
+interface MessageResponse {
+  messaging_product: 'whatsapp';
+  contacts: Array<{
+    input: string;   // Phone number sent to
+    wa_id: string;   // WhatsApp ID
+  }>;
+  messages: Array<{
+    id: string;                    // Unique message ID
+    message_status?: MessageStatus; // Message status
+  }>;
+}
+
+type MessageStatus = 'accepted' | 'queued' | 'sent' | 'delivered' | 'read' | 'failed';
+```
+
+### ProcessedIncomingMessage
+
+Parsed incoming message from webhooks.
+
+```typescript
+interface ProcessedIncomingMessage {
+  id: string;               // Message ID
+  from: string;             // Sender phone number
+  timestamp: string;        // ISO timestamp
+  type: WhatsAppMessageType; // Message type
+  
+  // Type-specific content
+  text?: string;
+  media?: MediaInfo;
+  location?: LocationInfo;
+  interactive?: InteractiveInfo;
+  contacts?: Contact[];
+}
+```
+
+## Error Handling
+
+All methods can throw the following error types:
+
+- **ConfigurationError**: Invalid client configuration
+- **MessageValidationError**: Invalid message content
+- **WhatsAppApiError**: API errors from Meta
+- **RateLimitError**: Rate limiting
+- **MediaProcessingError**: Media upload/download errors
+- **WebhookVerificationError**: Webhook verification failures
+
+**Example:**
+```typescript
+import { 
+  WhatsAppApiError, 
+  MessageValidationError,
+  RateLimitError 
+} from 'whatsapp-client-sdk';
+
+try {
+  await client.sendText('+1234567890', 'Hello!');
+} catch (error) {
+  if (error instanceof WhatsAppApiError) {
+    console.error('API Error:', error.details);
+  } else if (error instanceof MessageValidationError) {
+    console.error('Validation Error:', error.field);
+  } else if (error instanceof RateLimitError) {
+    console.error('Rate limited. Retry after:', error.retryAfter);
+  }
+}
+```
+
+## Method Chaining
+
+Some operations can be chained for efficiency:
+
+```typescript
+// Upload and send in sequence
+const media = await client.uploadMedia(fileBuffer, 'image');
+const response = await client.sendImage('+1234567890', { 
+  id: media.id, 
+  caption: 'Uploaded image' 
+});
+
+// Reuse media for multiple recipients
+await Promise.all([
+  client.sendImage('+1111111111', { id: media.id }),
+  client.sendImage('+2222222222', { id: media.id }),
+  client.sendImage('+3333333333', { id: media.id })
+]);
+```
+
+## Configuration Options
+
+### WhatsAppConfig Interface
+
+```typescript
+interface WhatsAppConfig {
+  // Required
+  accessToken: string;           // Meta access token
+  phoneNumberId: string;         // WhatsApp Business phone number ID
+  
+  // Optional
+  baseUrl?: string;             // API base URL (default: graph.facebook.com)
+  apiVersion?: string;          // API version (default: v23.0)
+  timeout?: number;             // Request timeout in ms (default: 30000)
+  webhookVerifyToken?: string;  // Webhook verification token
+  businessId?: string;          // Business account ID
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Type Definitions"
+    icon="code-branch"
+    href="/api-reference/types"
+  >
+    Complete TypeScript interface documentation
+  </Card>
+  <Card
+    title="Error Classes"
+    icon="shield"
+    href="/api-reference/errors"
+  >
+    Detailed error handling reference
+  </Card>
+  <Card
+    title="Utility Functions"
+    icon="wrench"
+    href="/api-reference/utilities"
+  >
+    Helper functions and validation utilities
+  </Card>
+  <Card
+    title="Examples"
+    icon="lightbulb"
+    href="/examples/basic-usage"
+  >
+    Real-world usage examples and patterns
+  </Card>
+</CardGroup>

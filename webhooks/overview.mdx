@@ -1,0 +1,522 @@
+---
+title: "Webhook System Overview"
+description: "Framework-agnostic webhook processing for receiving and handling WhatsApp messages"
+---
+
+# Webhook System Overview
+
+The WhatsApp Client SDK provides a powerful, framework-agnostic webhook system that handles incoming WhatsApp messages and user interactions. The system works with any Node.js framework and provides type-safe message handlers.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card
+    title="Framework Agnostic"
+    icon="layers"
+  >
+    Works with Express, Next.js, NestJS, Fastify, AWS Lambda, and any Node.js framework
+  </Card>
+  <Card
+    title="Auto Message Parsing"
+    icon="message"
+  >
+    Automatically parses WhatsApp webhook payloads into structured message objects
+  </Card>
+  <Card
+    title="Type-Safe Handlers"
+    icon="shield"
+  >
+    Strongly typed handler functions for each message type with full IntelliSense
+  </Card>
+  <Card
+    title="Built-in Verification"
+    icon="check-circle"
+  >
+    Automatic webhook verification for security and authenticity
+  </Card>
+</CardGroup>
+
+## Quick Start
+
+### 1. Create Webhook Processor
+
+```typescript
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN!,
+});
+
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    console.log(`Text from ${message.from}: ${message.text}`);
+    await client.sendText(message.from, `Echo: ${message.text}`);
+  },
+  
+  onButtonClick: async (message) => {
+    console.log(`Button clicked: ${message.interactive.button_id}`);
+    await client.sendText(message.from, 'Button received!');
+  },
+  
+  onError: async (error, message) => {
+    console.error('Webhook error:', error.message);
+  }
+});
+```
+
+### 2. Universal Webhook Endpoint
+
+Works with any framework:
+
+```typescript
+// Express, Fastify, Next.js, etc.
+app.all('/webhook', async (req, res) => {
+  try {
+    const result = await webhookProcessor.processWebhook(req.body, req.query);
+    res.status(result.status).send(result.response);
+  } catch (error) {
+    res.status(500).send('Internal Server Error');
+  }
+});
+```
+
+## Webhook Handler Types
+
+### Message Handlers
+
+```typescript
+interface WebhookHandlers {
+  onTextMessage?: (message: ProcessedIncomingMessage & { text: string }) => Promise<void>;
+  onImageMessage?: (message: ProcessedIncomingMessage & { media: MediaInfo }) => Promise<void>;
+  onVideoMessage?: (message: ProcessedIncomingMessage & { media: MediaInfo }) => Promise<void>;
+  onAudioMessage?: (message: ProcessedIncomingMessage & { media: MediaInfo }) => Promise<void>;
+  onDocumentMessage?: (message: ProcessedIncomingMessage & { media: MediaInfo }) => Promise<void>;
+  onLocationMessage?: (message: ProcessedIncomingMessage & { location: LocationInfo }) => Promise<void>;
+  onContactMessage?: (message: ProcessedIncomingMessage & { contacts: Contact[] }) => Promise<void>;
+  onStickerMessage?: (message: ProcessedIncomingMessage & { media: MediaInfo }) => Promise<void>;
+  onButtonClick?: (message: ProcessedIncomingMessage & { interactive: InteractiveInfo }) => Promise<void>;
+  onListSelect?: (message: ProcessedIncomingMessage & { interactive: InteractiveInfo }) => Promise<void>;
+  onUnknownMessage?: (message: ProcessedIncomingMessage) => Promise<void>;
+  onError?: (error: Error, message?: ProcessedIncomingMessage) => Promise<void>;
+}
+```
+
+## Complete Example
+
+### Smart Auto-Responder
+
+```typescript
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    const text = message.text.toLowerCase();
+    
+    if (text.includes('hello') || text.includes('hi')) {
+      await client.sendText(
+        message.from,
+        '👋 Hello! How can I help you today?'
+      );
+    } else if (text.includes('help')) {
+      await client.sendButtons(
+        message.from,
+        'How can I assist you?',
+        [
+          { id: 'support', title: '🛟 Get Support' },
+          { id: 'info', title: 'ℹ️ Information' },
+          { id: 'contact', title: '📞 Contact Us' }
+        ]
+      );
+    } else if (text.includes('price') || text.includes('cost')) {
+      await client.sendList(
+        message.from,
+        'Here are our pricing options:',
+        'View Pricing',
+        [
+          {
+            title: 'Plans',
+            rows: [
+              { id: 'basic', title: 'Basic Plan', description: '$9.99/month' },
+              { id: 'pro', title: 'Pro Plan', description: '$19.99/month' },
+              { id: 'enterprise', title: 'Enterprise', description: 'Custom pricing' }
+            ]
+          }
+        ]
+      );
+    } else {
+      await client.sendText(
+        message.from,
+        '🤖 Thanks for your message! A human will respond shortly.'
+      );
+    }
+  },
+  
+  onImageMessage: async (message) => {
+    await client.sendText(
+      message.from,
+      '📸 Great image! Thanks for sharing.'
+    );
+    
+    // Optional: Download and process the image
+    // const buffer = await client.downloadMedia(message.media.id);
+    // await processImage(buffer);
+  },
+  
+  onButtonClick: async (message) => {
+    const buttonId = message.interactive.button_id;
+    
+    switch (buttonId) {
+      case 'support':
+        await client.sendText(
+          message.from,
+          '🛟 Our support team will contact you within 24 hours.\n\n' +
+          'For urgent issues, call: +1-800-555-0123'
+        );
+        break;
+        
+      case 'info':
+        await client.sendText(
+          message.from,
+          'ℹ️ We\'re a tech company focused on innovative solutions.\n\n' +
+          'Learn more: https://company.example.com'
+        );
+        break;
+        
+      case 'contact':
+        await client.sendContacts(message.from, [
+          {
+            name: { formatted_name: 'Customer Support' },
+            phones: [{ phone: '+1-800-555-0123', type: 'WORK' }],
+            emails: [{ email: 'support@company.com', type: 'WORK' }]
+          }
+        ]);
+        break;
+    }
+  },
+  
+  onListSelect: async (message) => {
+    const listId = message.interactive.list_id;
+    
+    switch (listId) {
+      case 'basic':
+        await client.sendText(
+          message.from,
+          '📦 Basic Plan - $9.99/month\n\n' +
+          '✅ 10 GB Storage\n' +
+          '✅ Email Support\n' +
+          '✅ Basic Features\n\n' +
+          'Ready to upgrade? https://signup.example.com/basic'
+        );
+        break;
+        
+      case 'pro':
+        await client.sendText(
+          message.from,
+          '🚀 Pro Plan - $19.99/month\n\n' +
+          '✅ 100 GB Storage\n' +
+          '✅ Priority Support\n' +
+          '✅ Advanced Features\n' +
+          '✅ API Access\n\n' +
+          'Start free trial: https://signup.example.com/pro'
+        );
+        break;
+        
+      case 'enterprise':
+        await client.sendText(
+          message.from,
+          '🏢 Enterprise Plan\n\n' +
+          '✅ Unlimited Storage\n' +
+          '✅ 24/7 Phone Support\n' +
+          '✅ Custom Features\n' +
+          '✅ Dedicated Account Manager\n\n' +
+          'Contact sales: sales@company.com'
+        );
+        break;
+    }
+  },
+  
+  onLocationMessage: async (message) => {
+    const { latitude, longitude, name } = message.location;
+    
+    await client.sendText(
+      message.from,
+      `📍 Thanks for sharing your location!\n\n` +
+      `${name || 'Location'}: ${latitude}, ${longitude}\n\n` +
+      `We'll find the nearest service center for you.`
+    );
+  },
+  
+  onDocumentMessage: async (message) => {
+    await client.sendText(
+      message.from,
+      `📄 Document "${message.media.filename}" received.\n\n` +
+      `Our team will review it and get back to you within 2 business days.`
+    );
+  },
+  
+  onContactMessage: async (message) => {
+    await client.sendText(
+      message.from,
+      '📇 Thank you for sharing the contact information!\n\n' +
+      'We\'ve saved it to our system.'
+    );
+  },
+  
+  onStickerMessage: async (message) => {
+    await client.sendText(
+      message.from,
+      '😄 Nice sticker! We love creative communication.'
+    );
+  },
+  
+  onError: async (error, message) => {
+    console.error('Webhook processing error:', {
+      error: error.message,
+      messageId: message?.id,
+      from: message?.from
+    });
+    
+    if (message) {
+      try {
+        await client.sendText(
+          message.from,
+          '⚠️ Sorry, we encountered a technical issue. Please try again or contact support.'
+        );
+      } catch (sendError) {
+        console.error('Failed to send error message:', sendError);
+      }
+    }
+  }
+});
+```
+
+## Framework Integration
+
+### Express.js
+
+```typescript
+import express from 'express';
+
+const app = express();
+app.use(express.json());
+
+app.all('/webhook', async (req, res) => {
+  const result = await webhookProcessor.processWebhook(req.body, req.query);
+  res.status(result.status).send(result.response);
+});
+
+app.listen(3000, () => {
+  console.log('Webhook server running on port 3000');
+});
+```
+
+### Next.js API Route
+
+```typescript
+// pages/api/webhook.ts
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const result = await webhookProcessor.processWebhook(req.body, req.query);
+  res.status(result.status).send(result.response);
+}
+```
+
+### Fastify
+
+```typescript
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.all('/webhook', async (request, reply) => {
+  const result = await webhookProcessor.processWebhook(request.body, request.query);
+  reply.code(result.status).send(result.response);
+});
+
+fastify.listen({ port: 3000 });
+```
+
+### AWS Lambda
+
+```typescript
+export const handler = async (event: any) => {
+  const body = event.body ? JSON.parse(event.body) : {};
+  const query = event.queryStringParameters || {};
+  
+  const result = await webhookProcessor.processWebhook(body, query);
+  
+  return {
+    statusCode: result.status,
+    body: result.response.toString(),
+    headers: { 'Content-Type': 'text/plain' }
+  };
+};
+```
+
+## Advanced Features
+
+### Message Context Tracking
+
+```typescript
+// Track conversation context
+const conversationContext = new Map();
+
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    const context = conversationContext.get(message.from) || { step: 'greeting' };
+    
+    switch (context.step) {
+      case 'greeting':
+        await client.sendText(message.from, 'What\'s your name?');
+        conversationContext.set(message.from, { step: 'name' });
+        break;
+        
+      case 'name':
+        context.name = message.text;
+        await client.sendText(message.from, `Nice to meet you, ${context.name}! What can I help you with?`);
+        conversationContext.set(message.from, { ...context, step: 'help' });
+        break;
+        
+      case 'help':
+        await client.sendText(message.from, `Thanks for your question, ${context.name}. Let me help you with that.`);
+        conversationContext.delete(message.from); // Reset context
+        break;
+    }
+  }
+});
+```
+
+### Webhook Security
+
+```typescript
+// Enhanced webhook verification
+const webhookProcessor = client.createWebhookProcessor({
+  verifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN,
+  
+  onTextMessage: async (message) => {
+    // Message is already verified by processor
+    await handleMessage(message);
+  },
+  
+  onError: async (error) => {
+    if (error.name === 'WebhookVerificationError') {
+      console.error('Webhook verification failed:', error.message);
+      // Handle security breach
+    }
+  }
+});
+```
+
+## Best Practices
+
+### 1. Response Time
+
+Keep webhook responses under 20 seconds:
+
+```typescript
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    // Quick acknowledgment
+    await client.sendText(message.from, 'Message received! Processing...');
+    
+    // Process asynchronously
+    processMessageAsync(message); // Don't await
+  }
+});
+
+async function processMessageAsync(message: any) {
+  // Long-running processing
+  const result = await complexProcessing(message.text);
+  await client.sendText(message.from, `Result: ${result}`);
+}
+```
+
+### 2. Error Handling
+
+```typescript
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    try {
+      await processMessage(message);
+    } catch (error) {
+      console.error('Message processing failed:', error);
+      await client.sendText(
+        message.from,
+        'Sorry, something went wrong. Please try again.'
+      );
+    }
+  },
+  
+  onError: async (error, message) => {
+    // Log error for monitoring
+    console.error('Webhook error:', { error: error.message, messageId: message?.id });
+    
+    // Notify monitoring service
+    await notifyErrorService(error, message);
+  }
+});
+```
+
+### 3. Rate Limiting
+
+```typescript
+const messageRateLimit = new Map();
+
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    const now = Date.now();
+    const userMessages = messageRateLimit.get(message.from) || [];
+    
+    // Remove messages older than 1 minute
+    const recentMessages = userMessages.filter(time => now - time < 60000);
+    
+    if (recentMessages.length >= 10) {
+      await client.sendText(
+        message.from,
+        'You\'re sending messages too quickly. Please slow down.'
+      );
+      return;
+    }
+    
+    recentMessages.push(now);
+    messageRateLimit.set(message.from, recentMessages);
+    
+    // Process message normally
+    await handleMessage(message);
+  }
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Webhook Processor"
+    icon="cog"
+    href="/webhooks/processor"
+  >
+    Deep dive into the webhook processor features
+  </Card>
+  <Card
+    title="Framework Integration"
+    icon="layers"
+    href="/webhooks/frameworks"
+  >
+    Specific integration guides for different frameworks
+  </Card>
+  <Card
+    title="Webhook Security"
+    icon="shield"
+    href="/webhooks/security"
+  >
+    Security best practices and verification
+  </Card>
+  <Card
+    title="Examples"
+    icon="code"
+    href="/examples/framework-integration"
+  >
+    Real-world webhook implementation examples
+  </Card>
+</CardGroup>

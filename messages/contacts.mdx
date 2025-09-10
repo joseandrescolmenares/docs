@@ -1,0 +1,658 @@
+---
+title: Contact Messages
+description: Share contact information with vCard format including names, phones, emails, and addresses
+---
+
+# Contact Messages
+
+Share contact information in vCard format with names, phone numbers, emails, addresses, and other professional details. Perfect for sharing business cards, team contacts, or customer service information.
+
+## Basic Contact Message
+
+```typescript
+await client.sendContacts('+573001234567', [
+  {
+    name: {
+      formatted_name: 'John Smith',
+      first_name: 'John',
+      last_name: 'Smith'
+    },
+    phones: [
+      {
+        phone: '+1234567890',
+        type: 'WORK'
+      }
+    ]
+  }
+]);
+```
+
+## Complete Contact Information
+
+```typescript
+await client.sendContacts('+573001234567', [
+  {
+    name: {
+      formatted_name: 'María García',
+      first_name: 'María',
+      middle_name: 'Isabel',
+      last_name: 'García',
+      name_prefix: 'Dr.',
+      name_suffix: 'PhD'
+    },
+    phones: [
+      {
+        phone: '+573001234567',
+        wa_id: '573001234567',  // WhatsApp ID
+        type: 'WORK'
+      },
+      {
+        phone: '+573007654321',
+        type: 'HOME'
+      },
+      {
+        phone: '+573009876543',
+        type: 'CELL'
+      }
+    ],
+    emails: [
+      {
+        email: 'maria.garcia@company.com',
+        type: 'WORK'
+      },
+      {
+        email: 'maria.personal@gmail.com',
+        type: 'HOME'
+      }
+    ],
+    addresses: [
+      {
+        street: 'Carrera 10 #20-30',
+        city: 'Bogotá',
+        state: 'Cundinamarca',
+        zip: '110111',
+        country: 'Colombia',
+        country_code: 'CO',
+        type: 'WORK'
+      },
+      {
+        street: 'Calle 45 #15-25, Apt 301',
+        city: 'Bogotá',
+        state: 'Cundinamarca',
+        zip: '110211',
+        country: 'Colombia',
+        country_code: 'CO',
+        type: 'HOME'
+      }
+    ],
+    org: {
+      company: 'TechSolutions SAS',
+      department: 'Software Development',
+      title: 'Senior Developer'
+    },
+    urls: [
+      {
+        url: 'https://linkedin.com/in/mariagarcia',
+        type: 'WORK'
+      },
+      {
+        url: 'https://github.com/mariagarcia',
+        type: 'WORK'
+      },
+      {
+        url: 'https://mariagarcia.dev',
+        type: 'HOME'
+      }
+    ],
+    birthday: '1990-05-15'
+  }
+]);
+```
+
+## Business Contact Examples
+
+### Customer Support Team
+
+```typescript
+const sendSupportContacts = async (customerPhone: string) => {
+  await client.sendContacts(customerPhone, [
+    {
+      name: {
+        formatted_name: 'TechStore Customer Support',
+        first_name: 'Customer',
+        last_name: 'Support'
+      },
+      phones: [
+        {
+          phone: '+573001234567',
+          wa_id: '573001234567',
+          type: 'WORK'
+        }
+      ],
+      emails: [
+        {
+          email: 'support@techstore.com',
+          type: 'WORK'
+        }
+      ],
+      org: {
+        company: 'TechStore',
+        department: 'Customer Support',
+        title: 'Support Team'
+      },
+      urls: [
+        {
+          url: 'https://techstore.com/support',
+          type: 'WORK'
+        }
+      ]
+    }
+  ]);
+  
+  await client.sendText(
+    customerPhone,
+    '📞 Customer Support Contact\n\n' +
+    '🕒 Available 24/7\n' +
+    '💬 WhatsApp support\n' +
+    '📧 Email support\n' +
+    '🌐 Online help center\n\n' +
+    'Save this contact for quick access to support! 📇'
+  );
+};
+```
+
+### Sales Representative
+
+```typescript
+const sendSalesContact = async (customerPhone: string, salesRep: any) => {
+  await client.sendContacts(customerPhone, [
+    {
+      name: {
+        formatted_name: `${salesRep.firstName} ${salesRep.lastName}`,
+        first_name: salesRep.firstName,
+        last_name: salesRep.lastName
+      },
+      phones: [
+        {
+          phone: salesRep.phone,
+          wa_id: salesRep.whatsappId,
+          type: 'WORK'
+        },
+        {
+          phone: salesRep.directLine,
+          type: 'WORK'
+        }
+      ],
+      emails: [
+        {
+          email: salesRep.email,
+          type: 'WORK'
+        }
+      ],
+      addresses: [
+        {
+          street: 'Carrera 10 #20-30',
+          city: 'Bogotá',
+          state: 'Cundinamarca',
+          country: 'Colombia',
+          country_code: 'CO',
+          type: 'WORK'
+        }
+      ],
+      org: {
+        company: 'TechStore',
+        department: 'Sales',
+        title: salesRep.title
+      },
+      urls: [
+        {
+          url: salesRep.linkedinUrl,
+          type: 'WORK'
+        }
+      ]
+    }
+  ]);
+  
+  await client.sendText(
+    customerPhone,
+    `👋 Meet your sales representative!\n\n` +
+    `🏷️ ${salesRep.firstName} ${salesRep.lastName}\n` +
+    `💼 ${salesRep.title}\n` +
+    `⭐ ${salesRep.experience} years of experience\n` +
+    `🎯 Specializes in: ${salesRep.specialties.join(', ')}\n\n` +
+    `Feel free to contact ${salesRep.firstName} directly for personalized assistance! 📱`
+  );
+};
+```
+
+### Emergency Contacts
+
+```typescript
+const sendEmergencyContacts = async (userPhone: string) => {
+  const emergencyContacts = [
+    {
+      name: {
+        formatted_name: 'TechStore Emergency Support',
+        first_name: 'Emergency',
+        last_name: 'Support'
+      },
+      phones: [
+        {
+          phone: '+573001111111',
+          type: 'WORK'
+        }
+      ],
+      emails: [
+        {
+          email: 'emergency@techstore.com',
+          type: 'WORK'
+        }
+      ],
+      org: {
+        company: 'TechStore',
+        department: 'Emergency Support',
+        title: '24/7 Emergency Line'
+      }
+    },
+    {
+      name: {
+        formatted_name: 'TechStore Security',
+        first_name: 'Security',
+        last_name: 'Team'
+      },
+      phones: [
+        {
+          phone: '+573002222222',
+          type: 'WORK'
+        }
+      ],
+      emails: [
+        {
+          email: 'security@techstore.com',
+          type: 'WORK'
+        }
+      ],
+      org: {
+        company: 'TechStore',
+        department: 'Security',
+        title: 'Security Team'
+      }
+    }
+  ];
+  
+  await client.sendContacts(userPhone, emergencyContacts);
+  
+  await client.sendText(
+    userPhone,
+    '🚨 Emergency Contacts\n\n' +
+    '⚡ For urgent technical issues\n' +
+    '🔒 For security concerns\n' +
+    '🆘 Available 24/7\n\n' +
+    'Save these contacts for emergency situations! 📞'
+  );
+};
+```
+
+## Multiple Contacts at Once
+
+```typescript
+const sendTeamContacts = async (customerPhone: string) => {
+  const teamContacts = [
+    {
+      name: {
+        formatted_name: 'Ana Rodríguez - Project Manager',
+        first_name: 'Ana',
+        last_name: 'Rodríguez'
+      },
+      phones: [{ phone: '+573001111111', type: 'WORK' }],
+      emails: [{ email: 'ana@company.com', type: 'WORK' }],
+      org: {
+        company: 'TechSolutions',
+        department: 'Project Management',
+        title: 'Project Manager'
+      }
+    },
+    {
+      name: {
+        formatted_name: 'Carlos Mendoza - Lead Developer',
+        first_name: 'Carlos',
+        last_name: 'Mendoza'
+      },
+      phones: [{ phone: '+573002222222', type: 'WORK' }],
+      emails: [{ email: 'carlos@company.com', type: 'WORK' }],
+      org: {
+        company: 'TechSolutions',
+        department: 'Development',
+        title: 'Lead Developer'
+      }
+    },
+    {
+      name: {
+        formatted_name: 'Laura Silva - UX Designer',
+        first_name: 'Laura',
+        last_name: 'Silva'
+      },
+      phones: [{ phone: '+573003333333', type: 'WORK' }],
+      emails: [{ email: 'laura@company.com', type: 'WORK' }],
+      org: {
+        company: 'TechSolutions',
+        department: 'Design',
+        title: 'UX Designer'
+      }
+    }
+  ];
+  
+  await client.sendContacts(customerPhone, teamContacts);
+  
+  await client.sendText(
+    customerPhone,
+    '👥 Your Project Team\n\n' +
+    '📋 Ana Rodríguez - Project coordination\n' +
+    '💻 Carlos Mendoza - Technical development\n' +
+    '🎨 Laura Silva - User experience design\n\n' +
+    'Save all contacts to stay in touch with your team! 📇'
+  );
+};
+```
+
+## Handling Contact Responses
+
+```typescript
+const processor = client.createWebhookProcessor({
+  onContactMessage: async (message) => {
+    const userPhone = message.from;
+    
+    console.log('Contact received from:', userPhone);
+    
+    // Process received contacts
+    if (message.contacts && message.contacts.length > 0) {
+      const contact = message.contacts[0];
+      
+      await client.sendText(
+        userPhone,
+        `📇 Thank you for sharing the contact!\n\n` +
+        `👤 Name: ${contact.name?.formatted_name || 'No name provided'}\n` +
+        `📱 Phone: ${contact.phones?.[0]?.phone || 'No phone provided'}\n` +
+        `📧 Email: ${contact.emails?.[0]?.email || 'No email provided'}\n\n` +
+        `We'll add this contact to our database. ✅`
+      );
+      
+      // Save contact to database
+      await saveReceivedContact(userPhone, contact);
+      
+      // Offer to send our contact back
+      await client.sendButtons(
+        userPhone,
+        'Would you like our contact information as well?',
+        [
+          { id: 'send_our_contact', title: '📇 Send Our Contact' },
+          { id: 'no_thanks', title: '👍 No Thanks' }
+        ]
+      );
+    }
+  },
+  
+  onButtonClick: async (message) => {
+    if (message.interactive.button_id === 'send_our_contact') {
+      await sendCompanyContact(message.from);
+    }
+  }
+});
+```
+
+## Dynamic Contact Generation
+
+```typescript
+const generateContactFromUser = (userData: any) => {
+  return {
+    name: {
+      formatted_name: `${userData.firstName} ${userData.lastName}`,
+      first_name: userData.firstName,
+      last_name: userData.lastName
+    },
+    phones: userData.phones?.map(phone => ({
+      phone: phone.number,
+      wa_id: phone.whatsappId,
+      type: phone.type || 'CELL'
+    })) || [],
+    emails: userData.emails?.map(email => ({
+      email: email.address,
+      type: email.type || 'WORK'
+    })) || [],
+    addresses: userData.addresses?.map(address => ({
+      street: address.street,
+      city: address.city,
+      state: address.state,
+      zip: address.zip,
+      country: address.country,
+      country_code: address.countryCode,
+      type: address.type || 'WORK'
+    })) || [],
+    org: userData.organization ? {
+      company: userData.organization.company,
+      department: userData.organization.department,
+      title: userData.organization.title
+    } : undefined,
+    urls: userData.socialLinks?.map(link => ({
+      url: link.url,
+      type: link.type || 'WORK'
+    })) || [],
+    birthday: userData.birthday
+  };
+};
+
+const sendUserGeneratedContact = async (phone: string, userId: string) => {
+  const userData = await getUserData(userId);
+  const contact = generateContactFromUser(userData);
+  
+  await client.sendContacts(phone, [contact]);
+};
+```
+
+## Contact Validation
+
+```typescript
+const validateContact = (contact: any): string[] => {
+  const errors = [];
+  
+  // Name validation
+  if (!contact.name?.formatted_name) {
+    errors.push('formatted_name is required');
+  }
+  
+  // Phone validation
+  if (!contact.phones || contact.phones.length === 0) {
+    errors.push('At least one phone number is required');
+  } else {
+    contact.phones.forEach((phone, index) => {
+      if (!phone.phone) {
+        errors.push(`Phone ${index + 1}: phone number is required`);
+      }
+      if (phone.phone && !phone.phone.match(/^\+?[1-9]\d{1,14}$/)) {
+        errors.push(`Phone ${index + 1}: invalid phone format`);
+      }
+    });
+  }
+  
+  // Email validation
+  if (contact.emails) {
+    contact.emails.forEach((email, index) => {
+      if (email.email && !email.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+        errors.push(`Email ${index + 1}: invalid email format`);
+      }
+    });
+  }
+  
+  // URL validation
+  if (contact.urls) {
+    contact.urls.forEach((url, index) => {
+      if (url.url && !url.url.match(/^https?:\/\/.+/)) {
+        errors.push(`URL ${index + 1}: invalid URL format`);
+      }
+    });
+  }
+  
+  return errors;
+};
+
+const sendValidatedContact = async (phone: string, contact: any) => {
+  const errors = validateContact(contact);
+  
+  if (errors.length > 0) {
+    console.error('Contact validation errors:', errors);
+    await client.sendText(
+      phone,
+      '❌ Could not send contact due to validation errors. Please check the contact information.'
+    );
+    return;
+  }
+  
+  await client.sendContacts(phone, [contact]);
+};
+```
+
+## Contact Templates
+
+```typescript
+const contactTemplates = {
+  support: (companyName: string, phone: string, email: string) => ({
+    name: {
+      formatted_name: `${companyName} Support`,
+      first_name: companyName,
+      last_name: 'Support'
+    },
+    phones: [{ phone, type: 'WORK' }],
+    emails: [{ email, type: 'WORK' }],
+    org: {
+      company: companyName,
+      department: 'Customer Support',
+      title: 'Support Team'
+    }
+  }),
+  
+  salesperson: (firstName: string, lastName: string, phone: string, email: string, company: string) => ({
+    name: {
+      formatted_name: `${firstName} ${lastName}`,
+      first_name: firstName,
+      last_name: lastName
+    },
+    phones: [{ phone, type: 'WORK' }],
+    emails: [{ email, type: 'WORK' }],
+    org: {
+      company,
+      department: 'Sales',
+      title: 'Sales Representative'
+    }
+  }),
+  
+  technician: (name: string, phone: string, speciality: string, company: string) => ({
+    name: {
+      formatted_name: `${name} - ${speciality} Technician`,
+      first_name: name.split(' ')[0],
+      last_name: name.split(' ').slice(1).join(' ')
+    },
+    phones: [{ phone, type: 'WORK' }],
+    org: {
+      company,
+      department: 'Technical Service',
+      title: `${speciality} Technician`
+    }
+  })
+};
+
+// Usage
+await client.sendContacts(customerPhone, [
+  contactTemplates.support('TechStore', '+573001234567', 'support@techstore.com')
+]);
+```
+
+## Advanced Contact Features
+
+### QR Code Generation for Contacts
+
+```typescript
+const generateContactQR = async (contact: any): Promise<string> => {
+  // Generate vCard string
+  const vCard = generateVCard(contact);
+  
+  // Generate QR code (using a QR library)
+  const qrCode = await QRCode.toDataURL(vCard);
+  
+  return qrCode; // Base64 image data
+};
+
+const sendContactWithQR = async (phone: string, contact: any) => {
+  // Send contact first
+  await client.sendContacts(phone, [contact]);
+  
+  // Generate and send QR code
+  const qrImage = await generateContactQR(contact);
+  
+  await client.sendImage(phone, {
+    link: qrImage, // Or upload as media
+    caption: '📱 Scan this QR code to save the contact quickly!'
+  });
+};
+```
+
+### Contact Import/Export
+
+```typescript
+const exportContactsToVCard = (contacts: any[]): string => {
+  return contacts.map(contact => generateVCard(contact)).join('\n\n');
+};
+
+const importContactsFromVCard = (vCardData: string): any[] => {
+  // Parse vCard data into contact objects
+  // Implementation depends on vCard parsing library
+  return parseVCardData(vCardData);
+};
+```
+
+## Best Practices
+
+### 1. Privacy Considerations
+
+```typescript
+// Ask permission before sharing contacts
+const requestContactSharingPermission = async (userPhone: string) => {
+  await client.sendText(
+    userPhone,
+    '📇 We\'d like to share our team contacts with you.\n\n' +
+    'This will help you reach the right person quickly for any assistance.\n\n' +
+    'Is that okay with you? 🤝'
+  );
+};
+```
+
+### 2. Contact Organization
+
+```typescript
+// Group related contacts
+const sendOrganizedContacts = async (userPhone: string, contactGroups: any) => {
+  for (const [groupName, contacts] of Object.entries(contactGroups)) {
+    await client.sendText(userPhone, `👥 ${groupName} Contacts:`);
+    await client.sendContacts(userPhone, contacts);
+    await delay(1000); // Small delay between groups
+  }
+};
+```
+
+### 3. Contact Updates
+
+```typescript
+// Notify about contact changes
+const sendContactUpdate = async (userPhone: string, updatedContact: any, changes: string[]) => {
+  await client.sendText(
+    userPhone,
+    `📇 Contact Update\n\n` +
+    `Updated information for: ${updatedContact.name.formatted_name}\n` +
+    `Changes: ${changes.join(', ')}\n\n` +
+    `Please save the updated contact below:`
+  );
+  
+  await client.sendContacts(userPhone, [updatedContact]);
+};
+```
+
+Contact messages are perfect for building professional relationships and ensuring customers always have the right contact information at their fingertips.

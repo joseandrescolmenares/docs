@@ -1,97 +1,233 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "WhatsApp Client SDK"
+description: "Enterprise-grade TypeScript SDK for WhatsApp Business API with comprehensive message types, framework-agnostic webhooks, and production-ready features"
 ---
 
-## Setting up
+# WhatsApp Client SDK
 
-Get your documentation site up and running in minutes.
+A comprehensive TypeScript SDK for WhatsApp Business API that provides enterprise-grade features for building robust WhatsApp integrations.
+
+## 🚀 Quick Start
+
+Get started with the WhatsApp Client SDK in minutes.
 
 <Card
-  title="Start here"
+  title="Installation & Setup"
+  icon="download"
+  href="/installation"
+  horizontal
+>
+  Install the SDK and configure your WhatsApp Business API credentials.
+</Card>
+
+<Card
+  title="Quick Start Guide"
   icon="rocket"
   href="/quickstart"
   horizontal
 >
-  Follow our three step quickstart guide.
+  Send your first message in under 5 minutes.
 </Card>
 
-## Make it yours
+## ✨ Key Features
 
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
+The SDK is designed for enterprise applications with production-ready features.
 
 <Columns cols={2}>
   <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
+    title="11 Message Types"
+    icon="message"
+    href="/messages/overview"
   >
-    Use MDX to style your docs pages.
+    Send text, media, interactive buttons, lists, templates, contacts, locations, and stickers.
   </Card>
   <Card
-    title="Code samples"
+    title="Framework Agnostic Webhooks"
+    icon="webhook"
+    href="/webhooks/overview"
+  >
+    Works with Express, Next.js, NestJS, Fastify, AWS Lambda, and any Node.js framework.
+  </Card>
+  <Card
+    title="TypeScript First"
     icon="code"
-    href="/essentials/code"
+    href="/core-concepts/types"
   >
-    Add sample code to demonstrate how to use your product.
+    200+ type definitions with full IntelliSense support and compile-time safety.
   </Card>
   <Card
-    title="Images"
+    title="Error Handling"
+    icon="shield"
+    href="/core-concepts/errors"
+  >
+    6 specialized error classes with retry logic and exponential backoff.
+  </Card>
+  <Card
+    title="Media Management"
     icon="image"
-    href="/essentials/images"
+    href="/messages/media"
   >
-    Display images and other media.
+    Upload, download, and manage images, videos, audio, and documents with validation.
   </Card>
   <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
+    title="Production Ready"
+    icon="check-circle"
+    href="/guides/production-deployment"
   >
-    Write once and reuse across your docs.
+    Rate limiting, request timeouts, comprehensive logging, and 48 automated tests.
   </Card>
 </Columns>
 
-## Need inspiration?
+## 📱 Supported Message Types
+
+Send rich, interactive messages to engage your users.
+
+<Columns cols={3}>
+  <Card
+    title="Text Messages"
+    icon="text"
+    href="/messages/text"
+  >
+    Plain text with URL previews and reply support.
+  </Card>
+  <Card
+    title="Media Messages"
+    icon="photo"
+    href="/messages/media"
+  >
+    Images, videos, audio files, and documents.
+  </Card>
+  <Card
+    title="Interactive Messages"
+    icon="hand-pointer"
+    href="/messages/interactive"
+  >
+    Buttons, lists, and quick reply options.
+  </Card>
+  <Card
+    title="Template Messages"
+    icon="template"
+    href="/messages/template"
+  >
+    Pre-approved message templates for notifications.
+  </Card>
+  <Card
+    title="Location Messages"
+    icon="map-pin"
+    href="/messages/location"
+  >
+    Share GPS coordinates and location data.
+  </Card>
+  <Card
+    title="Contact Cards"
+    icon="address-book"
+    href="/messages/contacts"
+  >
+    Share contact information in vCard format.
+  </Card>
+</Columns>
+
+## 🏗️ Architecture Overview
+
+Built with enterprise requirements in mind.
+
+<Columns cols={2}>
+  <Card
+    title="Client Architecture"
+    icon="sitemap"
+    href="/core-concepts/architecture"
+  >
+    Learn about the SDK's modular design and core components.
+  </Card>
+  <Card
+    title="Type System"
+    icon="code-branch"
+    href="/core-concepts/types"
+  >
+    Explore comprehensive TypeScript definitions and interfaces.
+  </Card>
+  <Card
+    title="Validation System"
+    icon="check-double"
+    href="/core-concepts/validation"
+  >
+    Understand input validation and data sanitization.
+  </Card>
+  <Card
+    title="Error Handling"
+    icon="exclamation-triangle"
+    href="/core-concepts/errors"
+  >
+    Handle errors gracefully with specialized error classes.
+  </Card>
+</Columns>
+
+## 🎯 Framework Integration
+
+Seamlessly integrate with your preferred framework.
+
+<Columns cols={3}>
+  <Card
+    title="Express.js"
+    icon="server"
+    href="/webhooks/frameworks"
+  >
+    Traditional Node.js web framework integration.
+  </Card>
+  <Card
+    title="Next.js"
+    icon="triangle"
+    href="/webhooks/frameworks"
+  >
+    App Router and Pages Router support.
+  </Card>
+  <Card
+    title="NestJS"
+    icon="nest"
+    href="/webhooks/frameworks"
+  >
+    Enterprise Node.js framework with decorators.
+  </Card>
+  <Card
+    title="Fastify"
+    icon="flash"
+    href="/webhooks/frameworks"
+  >
+    High-performance web framework.
+  </Card>
+  <Card
+    title="AWS Lambda"
+    icon="cloud"
+    href="/webhooks/frameworks"
+  >
+    Serverless function deployment.
+  </Card>
+  <Card
+    title="Custom Setup"
+    icon="cog"
+    href="/webhooks/frameworks"
+  >
+    Use with any Node.js HTTP server.
+  </Card>
+</Columns>
+
+## 📊 By the Numbers
+
+<Info>
+- **580+ lines** of core client code
+- **200+ TypeScript** definitions
+- **11 message types** supported
+- **6 specialized** error classes
+- **48 automated tests** for reliability
+- **Framework agnostic** webhook system
+</Info>
+
+## 📚 Ready to dive deeper?
 
 <Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
+  title="View API Reference"
+  icon="book-open"
+  href="/api-reference/client"
 >
-  Browse our showcase of exceptional documentation sites.
+  Explore the complete API documentation with examples.
 </Card>

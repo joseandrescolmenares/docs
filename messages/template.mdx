@@ -1,0 +1,522 @@
+---
+title: Template Messages
+description: Send approved template messages for business communications
+---
+
+# Template Messages
+
+Template messages are pre-approved message formats that businesses can use for notifications, confirmations, and other structured communications. They must be approved by WhatsApp before use.
+
+## What are Template Messages?
+
+Template messages are structured message formats with predefined content and variable parameters. They're used for:
+
+- **Order confirmations**
+- **Delivery notifications** 
+- **Appointment reminders**
+- **Account alerts**
+- **Marketing messages** (with user opt-in)
+
+## Basic Template Message
+
+```typescript
+await client.sendTemplate(
+  '+573001234567',
+  'hello_world',  // Template name (must be approved)
+  'en_US',        // Language code
+  []              // Parameters (if any)
+);
+```
+
+## Template with Parameters
+
+```typescript
+await client.sendTemplate(
+  '+573001234567',
+  'order_confirmation',
+  'en',
+  [
+    {
+      type: 'body',
+      parameters: [
+        { type: 'text', text: 'John Smith' },      // Customer name
+        { type: 'text', text: 'ORD-2024-001' },   // Order ID
+        { type: 'text', text: '$149.99' }         // Total amount
+      ]
+    }
+  ]
+);
+```
+
+## Template Structure
+
+Templates consist of several components:
+
+### Header Component
+
+```typescript
+{
+  type: 'header',
+  parameters: [
+    {
+      type: 'image',
+      image: {
+        link: 'https://example.com/header-image.jpg'
+      }
+    }
+  ]
+}
+```
+
+### Body Component
+
+```typescript
+{
+  type: 'body', 
+  parameters: [
+    { type: 'text', text: 'Customer Name' },
+    { type: 'text', text: '2024-01-15' },
+    { type: 'currency', 
+      currency: { 
+        fallback_value: '$50.00',
+        code: 'USD',
+        amount_1000: 50000 
+      }
+    }
+  ]
+}
+```
+
+### Button Components
+
+```typescript
+{
+  type: 'button',
+  sub_type: 'url',
+  index: 0,
+  parameters: [
+    {
+      type: 'text',
+      text: 'ORDER123' // Dynamic part of URL
+    }
+  ]
+}
+```
+
+## Complete Template Examples
+
+### Order Confirmation Template
+
+```typescript
+const sendOrderConfirmation = async (
+  customerPhone: string,
+  customerName: string, 
+  orderId: string,
+  total: string,
+  trackingUrl: string
+) => {
+  await client.sendTemplate(
+    customerPhone,
+    'order_confirmation',
+    'en',
+    [
+      {
+        type: 'header',
+        parameters: [
+          {
+            type: 'image',
+            image: {
+              link: 'https://store.com/images/order-success.jpg'
+            }
+          }
+        ]
+      },
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: customerName },
+          { type: 'text', text: orderId },
+          { type: 'text', text: total }
+        ]
+      },
+      {
+        type: 'button',
+        sub_type: 'url',
+        index: 0,
+        parameters: [
+          {
+            type: 'text',
+            text: orderId // This replaces {{1}} in URL
+          }
+        ]
+      }
+    ]
+  );
+};
+```
+
+### Appointment Reminder Template
+
+```typescript
+const sendAppointmentReminder = async (
+  patientPhone: string,
+  patientName: string,
+  appointmentDate: string,
+  doctorName: string,
+  clinicName: string
+) => {
+  await client.sendTemplate(
+    patientPhone,
+    'appointment_reminder',
+    'en',
+    [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: patientName },
+          { type: 'text', text: appointmentDate },
+          { type: 'text', text: doctorName },
+          { type: 'text', text: clinicName }
+        ]
+      },
+      {
+        type: 'button',
+        sub_type: 'quick_reply',
+        index: 0,
+        parameters: [
+          {
+            type: 'payload',
+            payload: `confirm_${patientPhone}_${appointmentDate}`
+          }
+        ]
+      },
+      {
+        type: 'button', 
+        sub_type: 'quick_reply',
+        index: 1,
+        parameters: [
+          {
+            type: 'payload',
+            payload: `reschedule_${patientPhone}_${appointmentDate}`
+          }
+        ]
+      }
+    ]
+  );
+};
+```
+
+### Delivery Notification Template
+
+```typescript
+const sendDeliveryNotification = async (
+  customerPhone: string,
+  customerName: string,
+  orderId: string,
+  deliveryTime: string,
+  driverName: string
+) => {
+  await client.sendTemplate(
+    customerPhone,
+    'delivery_update',
+    'en',
+    [
+      {
+        type: 'header',
+        parameters: [
+          {
+            type: 'location',
+            location: {
+              latitude: 4.6097,
+              longitude: -74.0817,
+              name: 'Delivery Location',
+              address: 'Customer Address'
+            }
+          }
+        ]
+      },
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: customerName },
+          { type: 'text', text: orderId },
+          { type: 'text', text: deliveryTime },
+          { type: 'text', text: driverName }
+        ]
+      }
+    ]
+  );
+};
+```
+
+## Parameter Types
+
+### Text Parameters
+
+```typescript
+{ type: 'text', text: 'John Smith' }
+```
+
+### Currency Parameters
+
+```typescript
+{ 
+  type: 'currency',
+  currency: {
+    fallback_value: '$99.99',
+    code: 'USD',
+    amount_1000: 99990  // Amount in 1/1000 of currency unit
+  }
+}
+```
+
+### Date/Time Parameters
+
+```typescript
+{ 
+  type: 'date_time',
+  date_time: {
+    fallback_value: 'January 15, 2024',
+    day_of_week: 1,      // 1-7 (Monday-Sunday)
+    day_of_month: 15,
+    month: 1,            // 1-12
+    year: 2024,
+    hour: 14,            // 0-23
+    minute: 30,          // 0-59
+    calendar: 'GREGORIAN'
+  }
+}
+```
+
+### Image Parameters
+
+```typescript
+{
+  type: 'image',
+  image: {
+    link: 'https://example.com/image.jpg',
+    id: 'media_id_here'  // Alternative to link
+  }
+}
+```
+
+### Document Parameters
+
+```typescript
+{
+  type: 'document',
+  document: {
+    link: 'https://example.com/invoice.pdf',
+    filename: 'Invoice_2024.pdf'
+  }
+}
+```
+
+### Video Parameters
+
+```typescript
+{
+  type: 'video',
+  video: {
+    link: 'https://example.com/video.mp4',
+    id: 'media_id_here'
+  }
+}
+```
+
+## Multi-Language Templates
+
+```typescript
+const sendMultiLanguageTemplate = async (
+  phone: string,
+  customerName: string,
+  orderId: string,
+  preferredLanguage: string = 'en'
+) => {
+  const languageMap = {
+    'en': 'order_confirmation_en',
+    'es': 'order_confirmation_es', 
+    'fr': 'order_confirmation_fr',
+    'pt': 'order_confirmation_pt'
+  };
+  
+  const templateName = languageMap[preferredLanguage] || languageMap['en'];
+  
+  await client.sendTemplate(
+    phone,
+    templateName,
+    preferredLanguage,
+    [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: customerName },
+          { type: 'text', text: orderId }
+        ]
+      }
+    ]
+  );
+};
+```
+
+## Handling Template Responses
+
+```typescript
+const processor = client.createWebhookProcessor({
+  onButtonClick: async (message) => {
+    const payload = message.interactive.button_reply?.payload;
+    
+    if (payload?.startsWith('confirm_')) {
+      const [action, phone, date] = payload.split('_');
+      await handleAppointmentConfirmation(phone, date);
+    } 
+    else if (payload?.startsWith('reschedule_')) {
+      const [action, phone, date] = payload.split('_');
+      await handleAppointmentReschedule(phone, date);
+    }
+  }
+});
+
+const handleAppointmentConfirmation = async (phone: string, date: string) => {
+  await client.sendText(
+    phone,
+    '✅ Your appointment has been confirmed!\n\n' +
+    `📅 Date: ${date}\n` +
+    '⏰ Please arrive 15 minutes early\n' +
+    '📍 Address will be sent 1 hour before appointment'
+  );
+};
+```
+
+## Template Management
+
+### Creating Templates
+
+Templates must be created and approved through the WhatsApp Business Manager:
+
+1. Go to WhatsApp Business Manager
+2. Navigate to Account Tools > Message Templates
+3. Click "Create Template"
+4. Define template structure and content
+5. Submit for approval
+6. Wait for approval (usually 24-48 hours)
+
+### Template Approval Process
+
+**Common approval guidelines:**
+- Clear, professional language
+- Obvious opt-out instructions for marketing
+- No misleading information
+- Proper use of variables
+- Compliance with WhatsApp policies
+
+### Template Categories
+
+| Category | Purpose | Examples |
+|----------|---------|-----------|
+| **UTILITY** | Account updates, confirmations | Order confirmations, password resets |
+| **MARKETING** | Promotional content | Sales, new products, offers |
+| **AUTHENTICATION** | OTP and security codes | 2FA codes, verification |
+
+## Best Practices
+
+### 1. Parameter Validation
+
+```typescript
+const validateTemplateParams = (templateName: string, params: any[]) => {
+  const templates = {
+    'order_confirmation': {
+      requiredParams: 3,
+      types: ['text', 'text', 'text']
+    },
+    'appointment_reminder': {
+      requiredParams: 4,
+      types: ['text', 'text', 'text', 'text']
+    }
+  };
+  
+  const template = templates[templateName];
+  if (!template) {
+    throw new Error(`Unknown template: ${templateName}`);
+  }
+  
+  if (params.length !== template.requiredParams) {
+    throw new Error(`Template ${templateName} requires ${template.requiredParams} parameters`);
+  }
+};
+```
+
+### 2. Fallback Values
+
+```typescript
+const sendTemplateWithFallback = async (phone: string, templateData: any) => {
+  try {
+    await client.sendTemplate(
+      phone,
+      templateData.templateName,
+      templateData.language,
+      templateData.parameters
+    );
+  } catch (error) {
+    // Fall back to regular text message
+    console.warn('Template failed, sending text fallback:', error.message);
+    
+    const fallbackMessage = generateFallbackText(templateData);
+    await client.sendText(phone, fallbackMessage);
+  }
+};
+```
+
+### 3. Template Analytics
+
+```typescript
+const trackTemplateUsage = {
+  sent: new Map(),
+  delivered: new Map(),
+  
+  trackSent: (templateName: string) => {
+    const current = trackTemplateUsage.sent.get(templateName) || 0;
+    trackTemplateUsage.sent.set(templateName, current + 1);
+  },
+  
+  getStats: () => {
+    return {
+      totalSent: Array.from(trackTemplateUsage.sent.values()).reduce((a, b) => a + b, 0),
+      mostUsed: Array.from(trackTemplateUsage.sent.entries()).sort(([,a], [,b]) => b - a)[0]
+    };
+  }
+};
+```
+
+### 4. Rate Limiting for Templates
+
+```typescript
+import { delay } from 'whatsapp-client-sdk';
+
+const sendBulkTemplates = async (recipients: string[], templateData: any) => {
+  const BATCH_SIZE = 100;
+  const DELAY_BETWEEN_BATCHES = 60000; // 1 minute
+  
+  for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+    const batch = recipients.slice(i, i + BATCH_SIZE);
+    
+    await Promise.all(
+      batch.map(phone => 
+        client.sendTemplate(
+          phone,
+          templateData.templateName,
+          templateData.language,
+          templateData.parameters
+        )
+      )
+    );
+    
+    if (i + BATCH_SIZE < recipients.length) {
+      console.log(`Batch completed, waiting ${DELAY_BETWEEN_BATCHES/1000}s...`);
+      await delay(DELAY_BETWEEN_BATCHES);
+    }
+  }
+};
+```
+
+Template messages are essential for professional business communications on WhatsApp. They provide structure, ensure compliance, and enable automated messaging at scale.

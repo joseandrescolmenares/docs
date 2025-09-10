@@ -1,0 +1,561 @@
+---
+title: Sticker Messages
+description: Send animated and static stickers in WebP format for expressive communication
+---
+
+# Sticker Messages
+
+Send expressive stickers in WebP format to add personality and emotion to your conversations. Stickers are perfect for reactions, celebrations, and making interactions more engaging.
+
+## Basic Sticker Message
+
+Send a sticker using a media ID:
+
+```typescript
+await client.sendSticker('+573001234567', {
+  id: 'media_id_of_sticker'
+});
+```
+
+Send a sticker from URL:
+
+```typescript
+await client.sendSticker('+573001234567', {
+  link: 'https://example.com/stickers/celebration.webp'
+});
+```
+
+## Upload and Send Custom Stickers
+
+```typescript
+import fs from 'fs';
+
+// Upload sticker file (must be WebP format)
+const stickerBuffer = fs.readFileSync('./custom-sticker.webp');
+const stickerMedia = await client.uploadMedia(stickerBuffer, 'sticker');
+
+// Send the uploaded sticker
+await client.sendSticker('+573001234567', {
+  id: stickerMedia.id
+});
+```
+
+## Sticker with Reply Context
+
+```typescript
+// Reply to a message with a sticker
+await client.sendSticker(
+  '+573001234567',
+  { id: 'celebration_sticker_id' },
+  {
+    replyToMessageId: 'original_message_id'
+  }
+);
+```
+
+## Business Use Cases
+
+### Customer Service Reactions
+
+```typescript
+const sendServiceStickers = {
+  // Positive reactions
+  thumbsUp: async (customerPhone: string) => {
+    await client.sendSticker(customerPhone, {
+      link: 'https://business-stickers.com/thumbs-up.webp'
+    });
+  },
+  
+  // Celebration stickers
+  celebration: async (customerPhone: string) => {
+    await client.sendSticker(customerPhone, {
+      link: 'https://business-stickers.com/celebration.webp'
+    });
+  },
+  
+  // Thank you stickers
+  thankYou: async (customerPhone: string) => {
+    await client.sendSticker(customerPhone, {
+      link: 'https://business-stickers.com/thank-you.webp'
+    });
+  },
+  
+  // Apology stickers
+  sorry: async (customerPhone: string) => {
+    await client.sendSticker(customerPhone, {
+      link: 'https://business-stickers.com/sorry.webp'
+    });
+  }
+};
+
+// Usage in customer interactions
+const handleOrderCompletion = async (customerPhone: string) => {
+  await client.sendText(
+    customerPhone,
+    '✅ Your order has been completed successfully!\n\nThank you for choosing us! 🎉'
+  );
+  
+  // Send celebration sticker
+  await sendServiceStickers.celebration(customerPhone);
+};
+```
+
+### Branded Sticker Pack
+
+```typescript
+class BrandedStickerPack {
+  private stickers = new Map([
+    ['welcome', 'brand_welcome_sticker_id'],
+    ['thanks', 'brand_thanks_sticker_id'],
+    ['celebration', 'brand_celebration_sticker_id'],
+    ['support', 'brand_support_sticker_id'],
+    ['goodbye', 'brand_goodbye_sticker_id'],
+    ['thumbs_up', 'brand_thumbs_up_sticker_id'],
+    ['heart', 'brand_heart_sticker_id'],
+    ['star', 'brand_star_sticker_id']
+  ]);
+  
+  async send(phone: string, stickerName: string) {
+    const stickerId = this.stickers.get(stickerName);
+    
+    if (!stickerId) {
+      console.warn(`Sticker "${stickerName}" not found in brand pack`);
+      return;
+    }
+    
+    await client.sendSticker(phone, { id: stickerId });
+  }
+  
+  // Convenience methods
+  async welcome(phone: string) { await this.send(phone, 'welcome'); }
+  async thanks(phone: string) { await this.send(phone, 'thanks'); }
+  async celebrate(phone: string) { await this.send(phone, 'celebration'); }
+  async support(phone: string) { await this.send(phone, 'support'); }
+  async goodbye(phone: string) { await this.send(phone, 'goodbye'); }
+  async thumbsUp(phone: string) { await this.send(phone, 'thumbs_up'); }
+  async heart(phone: string) { await this.send(phone, 'heart'); }
+  async star(phone: string) { await this.send(phone, 'star'); }
+}
+
+const brandStickers = new BrandedStickerPack();
+
+// Welcome new customers
+await brandStickers.welcome('+573001234567');
+
+// Thank customers after purchase
+await brandStickers.thanks('+573001234567');
+
+// Celebrate milestones
+await brandStickers.celebrate('+573001234567');
+```
+
+## Handling Incoming Stickers
+
+```typescript
+const processor = client.createWebhookProcessor({
+  onStickerMessage: async (message) => {
+    const userPhone = message.from;
+    console.log(`Received sticker from ${userPhone}: ${message.media.id}`);
+    
+    // Download and analyze the sticker if needed
+    try {
+      const stickerBuffer = await client.downloadMedia(message.media.id);
+      console.log(`Sticker size: ${stickerBuffer.length} bytes`);
+      
+      // Respond with appropriate reaction
+      await respondToSticker(userPhone, message.media);
+      
+    } catch (error) {
+      console.error('Error processing sticker:', error);
+      
+      // Send a friendly text response instead
+      await client.sendText(
+        userPhone,
+        '😊 Nice sticker! Thanks for sharing!'
+      );
+    }
+  }
+});
+
+const respondToSticker = async (userPhone: string, stickerMedia: any) => {
+  // Respond with a random positive sticker
+  const positiveStickers = [
+    'thumbs_up_sticker_id',
+    'heart_sticker_id', 
+    'smile_sticker_id',
+    'celebration_sticker_id'
+  ];
+  
+  const randomSticker = positiveStickers[Math.floor(Math.random() * positiveStickers.length)];
+  
+  await client.sendSticker(userPhone, { id: randomSticker });
+  
+  // Follow up with a text message
+  await client.sendText(
+    userPhone,
+    '😄 Love the sticker! How can I help you today?'
+  );
+};
+```
+
+## Contextual Sticker Responses
+
+```typescript
+const ContextualStickerBot = {
+  // Analyze message content and respond with appropriate sticker
+  analyzeAndRespond: async (userPhone: string, messageText: string) => {
+    const text = messageText.toLowerCase();
+    
+    // Happy/positive words
+    if (text.includes('thanks') || text.includes('thank you') || text.includes('awesome')) {
+      await client.sendSticker(userPhone, { id: 'heart_sticker_id' });
+    }
+    
+    // Celebration words
+    else if (text.includes('success') || text.includes('completed') || text.includes('done')) {
+      await client.sendSticker(userPhone, { id: 'celebration_sticker_id' });
+    }
+    
+    // Greeting words
+    else if (text.includes('hello') || text.includes('hi') || text.includes('hey')) {
+      await client.sendSticker(userPhone, { id: 'wave_sticker_id' });
+    }
+    
+    // Goodbye words
+    else if (text.includes('bye') || text.includes('goodbye') || text.includes('see you')) {
+      await client.sendSticker(userPhone, { id: 'goodbye_sticker_id' });
+    }
+    
+    // Problem/issue words
+    else if (text.includes('problem') || text.includes('issue') || text.includes('help')) {
+      await client.sendSticker(userPhone, { id: 'support_sticker_id' });
+    }
+    
+    // Approval words
+    else if (text.includes('ok') || text.includes('yes') || text.includes('agree')) {
+      await client.sendSticker(userPhone, { id: 'thumbs_up_sticker_id' });
+    }
+    
+    // Love/like words
+    else if (text.includes('love') || text.includes('like') || text.includes('amazing')) {
+      await client.sendSticker(userPhone, { id: 'heart_eyes_sticker_id' });
+    }
+  }
+};
+
+// Usage in webhook processor
+const processor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    // Process the text message normally
+    await processTextMessage(message.text, message.from);
+    
+    // Then respond with contextual sticker
+    await ContextualStickerBot.analyzeAndRespond(message.from, message.text);
+  }
+});
+```
+
+## Sticker Collections Management
+
+```typescript
+class StickerCollectionManager {
+  private collections = new Map();
+  
+  // Create a new sticker collection
+  createCollection(name: string, stickers: { [key: string]: string }) {
+    this.collections.set(name, stickers);
+  }
+  
+  // Get sticker from collection
+  getSticker(collectionName: string, stickerKey: string): string | null {
+    const collection = this.collections.get(collectionName);
+    return collection?.[stickerKey] || null;
+  }
+  
+  // Send sticker from collection
+  async sendFromCollection(
+    phone: string, 
+    collectionName: string, 
+    stickerKey: string
+  ) {
+    const stickerId = this.getSticker(collectionName, stickerKey);
+    
+    if (!stickerId) {
+      console.warn(`Sticker "${stickerKey}" not found in collection "${collectionName}"`);
+      return false;
+    }
+    
+    await client.sendSticker(phone, { id: stickerId });
+    return true;
+  }
+  
+  // Get random sticker from collection
+  async sendRandomFromCollection(phone: string, collectionName: string) {
+    const collection = this.collections.get(collectionName);
+    
+    if (!collection) {
+      console.warn(`Collection "${collectionName}" not found`);
+      return false;
+    }
+    
+    const stickerKeys = Object.keys(collection);
+    const randomKey = stickerKeys[Math.floor(Math.random() * stickerKeys.length)];
+    
+    await client.sendSticker(phone, { id: collection[randomKey] });
+    return true;
+  }
+  
+  // List available collections
+  getCollections(): string[] {
+    return Array.from(this.collections.keys());
+  }
+}
+
+// Initialize sticker manager
+const stickerManager = new StickerCollectionManager();
+
+// Create business sticker collections
+stickerManager.createCollection('customer_service', {
+  welcome: 'cs_welcome_sticker_id',
+  thanks: 'cs_thanks_sticker_id',
+  sorry: 'cs_sorry_sticker_id',
+  help: 'cs_help_sticker_id'
+});
+
+stickerManager.createCollection('celebrations', {
+  party: 'party_sticker_id',
+  confetti: 'confetti_sticker_id',
+  trophy: 'trophy_sticker_id',
+  star: 'star_sticker_id'
+});
+
+stickerManager.createCollection('reactions', {
+  love: 'love_sticker_id',
+  wow: 'wow_sticker_id',
+  laugh: 'laugh_sticker_id',
+  cry: 'cry_sticker_id'
+});
+
+// Usage
+await stickerManager.sendFromCollection('+573001234567', 'customer_service', 'welcome');
+await stickerManager.sendRandomFromCollection('+573001234567', 'reactions');
+```
+
+## Animated vs Static Stickers
+
+```typescript
+class AnimatedStickerHandler {
+  // Animated stickers for high-engagement moments
+  static async sendAnimated(phone: string, type: string) {
+    const animatedStickers = {
+      'celebration': 'animated_celebration_id',
+      'loading': 'animated_loading_id',
+      'dancing': 'animated_dancing_id',
+      'clapping': 'animated_clapping_id',
+      'waving': 'animated_waving_id'
+    };
+    
+    const stickerId = animatedStickers[type];
+    if (stickerId) {
+      await client.sendSticker(phone, { id: stickerId });
+    }
+  }
+  
+  // Static stickers for quick reactions
+  static async sendStatic(phone: string, type: string) {
+    const staticStickers = {
+      'thumbs_up': 'static_thumbs_up_id',
+      'heart': 'static_heart_id',
+      'smile': 'static_smile_id',
+      'check': 'static_check_id',
+      'star': 'static_star_id'
+    };
+    
+    const stickerId = staticStickers[type];
+    if (stickerId) {
+      await client.sendSticker(phone, { id: stickerId });
+    }
+  }
+}
+
+// Use animated for special moments
+await AnimatedStickerHandler.sendAnimated('+573001234567', 'celebration');
+
+// Use static for quick acknowledgments
+await AnimatedStickerHandler.sendStatic('+573001234567', 'thumbs_up');
+```
+
+## Sticker Analytics
+
+```typescript
+const StickerAnalytics = {
+  sent: new Map(),
+  received: new Map(),
+  
+  // Track sent stickers
+  trackSent: (stickerId: string, phone: string) => {
+    const key = `${stickerId}_sent`;
+    const current = StickerAnalytics.sent.get(key) || 0;
+    StickerAnalytics.sent.set(key, current + 1);
+    
+    console.log(`Sticker ${stickerId} sent ${current + 1} times`);
+  },
+  
+  // Track received stickers
+  trackReceived: (stickerId: string, phone: string) => {
+    const key = `${stickerId}_received`;
+    const current = StickerAnalytics.received.get(key) || 0;
+    StickerAnalytics.received.set(key, current + 1);
+    
+    console.log(`Sticker ${stickerId} received ${current + 1} times`);
+  },
+  
+  // Get most popular sent stickers
+  getMostPopularSent: (limit: number = 10) => {
+    return Array.from(StickerAnalytics.sent.entries())
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, limit);
+  },
+  
+  // Get engagement metrics
+  getEngagementMetrics: () => {
+    const totalSent = Array.from(StickerAnalytics.sent.values()).reduce((a, b) => a + b, 0);
+    const totalReceived = Array.from(StickerAnalytics.received.values()).reduce((a, b) => a + b, 0);
+    
+    return {
+      totalSent,
+      totalReceived,
+      engagementRate: totalReceived / totalSent || 0,
+      uniqueStickers: StickerAnalytics.sent.size
+    };
+  }
+};
+
+// Track usage in webhook
+const processor = client.createWebhookProcessor({
+  onStickerMessage: async (message) => {
+    StickerAnalytics.trackReceived(message.media.id, message.from);
+    // Handle sticker message...
+  }
+});
+```
+
+## WebP Format Requirements
+
+```typescript
+const validateStickerFile = (buffer: Buffer): boolean => {
+  // Check WebP signature
+  const webpSignature = Buffer.from([0x52, 0x49, 0x46, 0x46]); // "RIFF"
+  const webpFormat = Buffer.from([0x57, 0x45, 0x42, 0x50]); // "WEBP"
+  
+  if (!buffer.subarray(0, 4).equals(webpSignature)) {
+    return false;
+  }
+  
+  if (!buffer.subarray(8, 12).equals(webpFormat)) {
+    return false;
+  }
+  
+  // Check file size (max 500KB for stickers)
+  if (buffer.length > 500 * 1024) {
+    return false;
+  }
+  
+  return true;
+};
+
+const uploadStickerSafely = async (filePath: string) => {
+  const buffer = fs.readFileSync(filePath);
+  
+  if (!validateStickerFile(buffer)) {
+    throw new Error('Invalid sticker file. Must be WebP format under 500KB');
+  }
+  
+  return await client.uploadMedia(buffer, 'sticker');
+};
+```
+
+## Best Practices
+
+### 1. Appropriate Usage
+
+```typescript
+// Use stickers to enhance, not replace, communication
+const enhancedResponse = async (phone: string, message: string, emotion: string) => {
+  // Send text message first
+  await client.sendText(phone, message);
+  
+  // Then add emotional context with sticker
+  if (emotion === 'positive') {
+    await client.sendSticker(phone, { id: 'positive_sticker_id' });
+  }
+};
+```
+
+### 2. Professional Context
+
+```typescript
+// Different sticker sets for different business contexts
+const BusinessStickerContext = {
+  formal: ['thumbs_up', 'check_mark', 'handshake'],
+  casual: ['smile', 'wink', 'heart', 'star'],
+  celebration: ['party', 'confetti', 'trophy', 'clap'],
+  support: ['helping_hand', 'tools', 'lightbulb']
+};
+
+const sendContextualSticker = async (phone: string, context: string, emotion: string) => {
+  const contextStickers = BusinessStickerContext[context];
+  if (contextStickers && contextStickers.includes(emotion)) {
+    await brandStickers.send(phone, emotion);
+  }
+};
+```
+
+### 3. Cultural Sensitivity
+
+```typescript
+// Consider cultural differences in sticker meanings
+const CulturalStickerFilter = {
+  isAppropriatForRegion: (stickerId: string, countryCode: string): boolean => {
+    // Implementation based on cultural appropriateness
+    const regionalRestrictions = {
+      'thumbs_up': ['MX', 'BR'], // Might be offensive in some cultures
+      'ok_hand': ['BR', 'TR']    // Different meanings
+    };
+    
+    return !regionalRestrictions[stickerId]?.includes(countryCode);
+  }
+};
+```
+
+### 4. Rate Limiting
+
+```typescript
+// Don't spam users with stickers
+const stickerRateLimit = new Map();
+
+const canSendSticker = (phone: string): boolean => {
+  const now = Date.now();
+  const lastSent = stickerRateLimit.get(phone) || 0;
+  const timeDiff = now - lastSent;
+  
+  // Allow one sticker per 30 seconds per user
+  if (timeDiff < 30000) {
+    return false;
+  }
+  
+  stickerRateLimit.set(phone, now);
+  return true;
+};
+
+const sendStickerWithRateLimit = async (phone: string, sticker: any) => {
+  if (!canSendSticker(phone)) {
+    console.log('Sticker rate limited for', phone);
+    return;
+  }
+  
+  await client.sendSticker(phone, sticker);
+};
+```
+
+Stickers add personality and emotional context to business communications, making interactions more engaging and memorable when used appropriately.

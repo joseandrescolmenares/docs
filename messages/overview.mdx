@@ -1,0 +1,415 @@
+---
+title: "Message Types Overview"
+description: "Complete guide to all 11 message types supported by the WhatsApp Client SDK"
+---
+
+# Message Types Overview
+
+The WhatsApp Client SDK supports all 11 message types available in the WhatsApp Business API, enabling rich communication experiences with your users.
+
+## Supported Message Types
+
+<CardGroup cols={3}>
+  <Card
+    title="Text Messages"
+    icon="message"
+    href="/messages/text"
+  >
+    Plain text with URL previews and reply support
+  </Card>
+  <Card
+    title="Image Messages"
+    icon="image"
+    href="/messages/media"
+  >
+    JPEG, PNG, WebP images with captions
+  </Card>
+  <Card
+    title="Video Messages"
+    icon="video"
+    href="/messages/media"
+  >
+    MP4, 3GPP videos with captions
+  </Card>
+  <Card
+    title="Audio Messages"
+    icon="microphone"
+    href="/messages/media"
+  >
+    Voice messages and audio files
+  </Card>
+  <Card
+    title="Document Messages"
+    icon="file-text"
+    href="/messages/media"
+  >
+    PDFs, Word docs, spreadsheets, and more
+  </Card>
+  <Card
+    title="Interactive Buttons"
+    icon="hand-pointer"
+    href="/messages/interactive"
+  >
+    Up to 3 clickable buttons with custom IDs
+  </Card>
+  <Card
+    title="Interactive Lists"
+    icon="list"
+    href="/messages/interactive"
+  >
+    Dropdown menus with multiple sections
+  </Card>
+  <Card
+    title="Template Messages"
+    icon="template"
+    href="/messages/template"
+  >
+    Pre-approved message templates
+  </Card>
+  <Card
+    title="Location Messages"
+    icon="map-pin"
+    href="/messages/location"
+  >
+    GPS coordinates with optional names
+  </Card>
+  <Card
+    title="Contact Cards"
+    icon="address-book"
+    href="/messages/contacts"
+  >
+    vCard contact information
+  </Card>
+  <Card
+    title="Sticker Messages"
+    icon="star"
+    href="/messages/stickers"
+  >
+    WebP animated and static stickers
+  </Card>
+</CardGroup>
+
+## Message Type Categories
+
+### 1. Basic Messages
+Simple, straightforward communication:
+- **Text**: Plain text messages with optional URL previews
+- **Location**: GPS coordinates with optional metadata
+
+### 2. Media Messages
+Rich media content:
+- **Image**: Photos, screenshots, graphics (JPEG, PNG, WebP)
+- **Video**: Video files and recordings (MP4, 3GPP)
+- **Audio**: Voice messages and audio files (AAC, MP3, OGG)
+- **Document**: Files and documents (PDF, DOC, XLS, TXT)
+- **Sticker**: Animated and static WebP stickers
+
+### 3. Interactive Messages
+User engagement and responses:
+- **Buttons**: Up to 3 action buttons with custom responses
+- **Lists**: Dropdown menus with multiple options and sections
+
+### 4. Structured Messages
+Business communication:
+- **Template**: Pre-approved message templates for notifications
+- **Contact**: vCard contact information sharing
+
+## Quick Reference
+
+### Message Size Limits
+
+| Message Type | Size Limit | Caption Support |
+|--------------|------------|-----------------|
+| Text | 4,096 characters | N/A |
+| Image | 5 MB | ✅ (1,024 chars) |
+| Video | 16 MB | ✅ (1,024 chars) |
+| Audio | 16 MB | ❌ |
+| Document | 100 MB | ✅ (1,024 chars) |
+| Sticker | 500 KB | ❌ |
+| Interactive | N/A | Footer text supported |
+| Template | Varies | Template-defined |
+| Location | N/A | Name/address fields |
+| Contact | N/A | Multiple contacts per message |
+
+### Common Properties
+
+All messages share these common properties:
+
+```typescript
+interface BaseMessage {
+  type: WhatsAppMessageType;  // Message type identifier
+  to: string;                 // Recipient phone number (+1234567890)
+  context?: {                 // Optional: Reply to another message
+    message_id: string;
+  };
+}
+```
+
+### Response Format
+
+All message sending methods return a consistent response:
+
+```typescript
+interface MessageResponse {
+  messaging_product: 'whatsapp';
+  contacts: Array<{
+    input: string;            // Phone number sent to
+    wa_id: string;           // WhatsApp ID
+  }>;
+  messages: Array<{
+    id: string;              // Unique message ID
+    message_status?: string; // Message status
+  }>;
+}
+```
+
+## Usage Patterns
+
+### 1. Simple Message Sending
+
+```typescript
+// Text message
+await client.sendText('+1234567890', 'Hello World!');
+
+// Image with caption
+await client.sendImage('+1234567890', {
+  link: 'https://example.com/image.jpg',
+  caption: 'Check out this image!'
+});
+
+// Location
+await client.sendLocation('+1234567890', 40.7128, -74.0060, {
+  name: 'New York City',
+  address: 'New York, NY, USA'
+});
+```
+
+### 2. Interactive Messages
+
+```typescript
+// Button menu
+await client.sendButtons(
+  '+1234567890',
+  'Choose an option:',
+  [
+    { id: 'option1', title: 'Option 1' },
+    { id: 'option2', title: 'Option 2' },
+    { id: 'option3', title: 'Option 3' }
+  ]
+);
+
+// List menu
+await client.sendList(
+  '+1234567890',
+  'Select a category:',
+  'View Options',
+  [
+    {
+      title: 'Main Category',
+      rows: [
+        { id: 'item1', title: 'Item 1', description: 'First item' },
+        { id: 'item2', title: 'Item 2', description: 'Second item' }
+      ]
+    }
+  ]
+);
+```
+
+### 3. Media Messages
+
+```typescript
+// Upload and send
+const mediaResponse = await client.uploadMedia(fileBuffer, 'image');
+await client.sendImage('+1234567890', {
+  id: mediaResponse.id,
+  caption: 'Uploaded image'
+});
+
+// Send from URL
+await client.sendDocument('+1234567890', {
+  link: 'https://example.com/document.pdf',
+  filename: 'important-document.pdf'
+});
+```
+
+### 4. Template Messages
+
+```typescript
+await client.sendTemplate(
+  '+1234567890',
+  'hello_world',
+  'en_US',
+  [
+    {
+      type: 'body',
+      parameters: [
+        { type: 'text', text: 'John' }
+      ]
+    }
+  ]
+);
+```
+
+## Message Selection Guide
+
+### Choose Text Messages When:
+- Sending simple notifications
+- Providing information or updates
+- Responding to basic queries
+- URL sharing (with preview)
+
+### Choose Media Messages When:
+- Sharing visual content (images/videos)
+- Sending documents or files
+- Voice communications (audio)
+- Creative expression (stickers)
+
+### Choose Interactive Messages When:
+- Providing menu options
+- Collecting user choices
+- Creating conversational flows
+- Reducing typing for users
+
+### Choose Template Messages When:
+- Sending business notifications
+- Order confirmations
+- Appointment reminders
+- Promotional content (with approval)
+
+### Choose Location Messages When:
+- Sharing business addresses
+- Meeting point coordination
+- Delivery information
+- Geographic references
+
+### Choose Contact Messages When:
+- Sharing business contact info
+- Referrals and introductions
+- Support team information
+- Professional networking
+
+## Best Practices
+
+### 1. Message Type Selection
+
+```typescript
+// ✅ Good: Choose appropriate message type
+// For simple confirmations
+await client.sendText(to, 'Your order has been confirmed!');
+
+// For choices
+await client.sendButtons(to, 'Rate your experience:', [
+  { id: 'excellent', title: '⭐⭐⭐⭐⭐' },
+  { id: 'good', title: '⭐⭐⭐⭐' },
+  { id: 'poor', title: '⭐⭐' }
+]);
+
+// For file sharing
+await client.sendDocument(to, {
+  link: documentUrl,
+  filename: 'invoice.pdf',
+  caption: 'Your invoice is attached'
+});
+```
+
+### 2. Content Optimization
+
+```typescript
+// ✅ Good: Optimize content for mobile
+await client.sendText(
+  to,
+  'Order Update 📦\n\n' +
+  '• Status: Shipped\n' +
+  '• Tracking: 123456789\n' +
+  '• ETA: Tomorrow 2-4 PM\n\n' +
+  'Track: https://track.example.com/123456789'
+);
+```
+
+### 3. Error Handling
+
+```typescript
+try {
+  const response = await client.sendImage(to, { link: imageUrl });
+  console.log('Message sent:', response.messages[0].id);
+} catch (error) {
+  if (error instanceof MessageValidationError) {
+    console.error('Invalid message:', error.field);
+  } else if (error instanceof MediaProcessingError) {
+    console.error('Media error:', error.message);
+  }
+}
+```
+
+### 4. Message Chaining
+
+```typescript
+// Send related messages in sequence
+async function sendOrderConfirmation(to: string, order: Order) {
+  // 1. Confirmation text
+  await client.sendText(to, `Order #${order.id} confirmed! 🎉`);
+  
+  // 2. Order details document
+  await client.sendDocument(to, {
+    link: order.invoiceUrl,
+    filename: `invoice-${order.id}.pdf`,
+    caption: 'Your order invoice'
+  });
+  
+  // 3. Tracking options
+  await client.sendButtons(to, 'What would you like to do?', [
+    { id: 'track', title: '📦 Track Order' },
+    { id: 'support', title: '💬 Contact Support' },
+    { id: 'receipt', title: '📧 Email Receipt' }
+  ]);
+}
+```
+
+## Platform Limitations
+
+### WhatsApp Business API Limits
+
+- **Messages per second**: Varies by tier (check Meta documentation)
+- **Message retention**: 30 days for media files
+- **Template approval**: Required for template messages
+- **Business verification**: Required for higher rate limits
+
+### SDK-Specific Features
+
+- **Automatic retry**: Built-in retry logic for failed messages
+- **Rate limit handling**: Automatic backoff when limits are reached
+- **Validation**: Pre-send validation to prevent API errors
+- **Type safety**: Full TypeScript support for all message types
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Text Messages"
+    icon="message"
+    href="/messages/text"
+  >
+    Learn about text messages with URL previews and replies
+  </Card>
+  <Card
+    title="Media Messages"
+    icon="photo"
+    href="/messages/media"
+  >
+    Explore image, video, audio, and document messages
+  </Card>
+  <Card
+    title="Interactive Messages"
+    icon="hand-pointer"
+    href="/messages/interactive"
+  >
+    Create engaging buttons and list menus
+  </Card>
+  <Card
+    title="Webhook Handling"
+    icon="webhook"
+    href="/webhooks/overview"
+  >
+    Handle incoming messages and user responses
+  </Card>
+</CardGroup>

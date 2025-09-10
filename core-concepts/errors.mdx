@@ -1,0 +1,677 @@
+---
+title: "Error Handling System"
+description: "Comprehensive error handling with 6 specialized error classes, retry logic, and production-ready error management"
+---
+
+# Error Handling System
+
+The WhatsApp Client SDK provides a comprehensive error handling system with 6 specialized error classes, automatic retry logic, and production-ready error management strategies.
+
+## Error Class Hierarchy
+
+All SDK errors extend the base `WhatsAppError` class, providing a consistent interface for error handling:
+
+```typescript
+abstract class WhatsAppError extends Error {
+  abstract readonly name: string;
+  
+  constructor(message: string) {
+    super(message);
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+```
+
+## Error Types
+
+### 1. WhatsAppApiError
+
+Handles errors from the WhatsApp Business API.
+
+```typescript
+class WhatsAppApiError extends WhatsAppError {
+  readonly name = 'WhatsAppApiError';
+  
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly code: number,
+    public readonly type: string,
+    public readonly details: string,
+    public readonly fbtrace_id?: string,
+    public readonly originalMessage?: OutgoingMessage
+  ) {
+    super(message);
+  }
+}
+```
+
+**Common API Error Codes:**
+- `100`: Invalid parameter
+- `130`: Invalid phone number
+- `131`: Recipient not on WhatsApp
+- `132`: Message undeliverable
+- `133`: Message content not allowed
+
+**Example Usage:**
+```typescript
+try {
+  await client.sendText('+invalid', 'Hello');
+} catch (error) {
+  if (error instanceof WhatsAppApiError) {
+    console.error('API Error:', {
+      status: error.status,      // HTTP status code
+      code: error.code,          // WhatsApp error code
+      type: error.type,          // Error type
+      details: error.details,    // Detailed description
+      traceId: error.fbtrace_id  // Facebook trace ID for support
+    });
+  }
+}
+```
+
+### 2. ConfigurationError
+
+Thrown when client configuration is invalid or incomplete.
+
+```typescript
+class ConfigurationError extends WhatsAppError {
+  readonly name = 'ConfigurationError';
+  
+  constructor(
+    message: string,
+    public readonly missingFields?: string[]
+  ) {
+    super(message);
+  }
+}
+```
+
+**Example:**
+```typescript
+try {
+  const client = new WhatsAppClient({
+    accessToken: '', // Invalid: empty
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  });
+} catch (error) {
+  if (error instanceof ConfigurationError) {
+    console.error('Configuration Error:', error.message);
+    console.error('Missing fields:', error.missingFields);
+    // Output: Missing fields: ['accessToken']
+  }
+}
+```
+
+### 3. MessageValidationError
+
+Thrown when message content fails validation.
+
+```typescript
+class MessageValidationError extends WhatsAppError {
+  readonly name = 'MessageValidationError';
+  
+  constructor(
+    message: string,
+    public readonly field: string,
+    public readonly value?: any,
+    public readonly constraint?: string
+  ) {
+    super(message);
+  }
+}
+```
+
+**Example:**
+```typescript
+try {
+  await client.sendText('invalid-number', 'Hello');
+} catch (error) {
+  if (error instanceof MessageValidationError) {
+    console.error('Validation Error:', {
+      message: error.message,    // Error description
+      field: error.field,        // Field that failed (e.g., 'to')
+      value: error.value,        // Invalid value
+      constraint: error.constraint // Validation rule
+    });
+  }
+}
+```
+
+### 4. RateLimitError
+
+Handles rate limiting from the WhatsApp API.
+
+```typescript
+class RateLimitError extends WhatsAppError {
+  readonly name = 'RateLimitError';
+  
+  constructor(
+    message: string,
+    public readonly retryAfter: number // Seconds to wait
+  ) {
+    super(message);
+  }
+}
+```
+
+**Example with Retry Logic:**
+```typescript
+async function sendWithRateLimit(client: WhatsAppClient, to: string, message: string) {
+  try {
+    return await client.sendText(to, message);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      console.log(`Rate limited. Waiting ${error.retryAfter} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, error.retryAfter * 1000));
+      
+      // Retry the request
+      return await client.sendText(to, message);
+    }
+    throw error;
+  }
+}
+```
+
+### 5. MediaProcessingError
+
+Handles errors related to media upload, download, or processing.
+
+```typescript
+class MediaProcessingError extends WhatsAppError {
+  readonly name = 'MediaProcessingError';
+  
+  constructor(
+    message: string,
+    public readonly mediaId?: string,
+    public readonly operation?: 'upload' | 'download' | 'info',
+    public readonly fileType?: string
+  ) {
+    super(message);
+  }
+}
+```
+
+**Example:**
+```typescript
+try {
+  const buffer = fs.readFileSync('./large-file.mp4');
+  await client.uploadMedia(buffer, 'video');
+} catch (error) {
+  if (error instanceof MediaProcessingError) {
+    console.error('Media Error:', {
+      operation: error.operation,   // 'upload'
+      fileType: error.fileType,     // 'video'
+      message: error.message        // Error details
+    });
+    
+    if (error.message.includes('file size')) {
+      console.log('File too large. Consider compressing the video.');
+    }
+  }
+}
+```
+
+### 6. WebhookVerificationError
+
+Thrown when webhook verification fails.
+
+```typescript
+class WebhookVerificationError extends WhatsAppError {
+  readonly name = 'WebhookVerificationError';
+  
+  constructor(
+    message: string,
+    public readonly expectedToken?: string,
+    public readonly receivedToken?: string
+  ) {
+    super(message);
+  }
+}
+```
+
+**Example:**
+```typescript
+try {
+  const result = client.verifyWebhook(
+    'subscribe',
+    'wrong-token',
+    'challenge-string'
+  );
+} catch (error) {
+  if (error instanceof WebhookVerificationError) {
+    console.error('Webhook verification failed:', {
+      expected: error.expectedToken,
+      received: error.receivedToken
+    });
+  }
+}
+```
+
+## Error Handling Patterns
+
+### 1. Basic Error Handling
+
+```typescript
+import { 
+  WhatsAppApiError, 
+  MessageValidationError, 
+  RateLimitError,
+  MediaProcessingError,
+  ConfigurationError,
+  WebhookVerificationError
+} from 'whatsapp-client-sdk';
+
+async function handleMessage(client: WhatsAppClient, to: string, message: string) {
+  try {
+    const response = await client.sendText(to, message);
+    console.log('Message sent:', response.messages[0].id);
+    return response;
+    
+  } catch (error) {
+    // Handle specific error types
+    if (error instanceof WhatsAppApiError) {
+      console.error('API Error:', error.details);
+      
+      // Handle specific API error codes
+      switch (error.code) {
+        case 130:
+          throw new Error('Invalid phone number format');
+        case 131:
+          throw new Error('Recipient not on WhatsApp');
+        case 132:
+          throw new Error('Message could not be delivered');
+        default:
+          throw new Error(`WhatsApp API error: ${error.details}`);
+      }
+      
+    } else if (error instanceof MessageValidationError) {
+      console.error(`Validation failed for field '${error.field}':`, error.message);
+      throw new Error(`Invalid ${error.field}: ${error.message}`);
+      
+    } else if (error instanceof RateLimitError) {
+      console.error(`Rate limited. Retry after ${error.retryAfter} seconds`);
+      throw new Error('Too many requests. Please try again later.');
+      
+    } else if (error instanceof MediaProcessingError) {
+      console.error('Media processing failed:', error.message);
+      throw new Error('Media upload/download failed');
+      
+    } else if (error instanceof ConfigurationError) {
+      console.error('Configuration error:', error.missingFields);
+      throw new Error('Invalid SDK configuration');
+      
+    } else if (error instanceof WebhookVerificationError) {
+      console.error('Webhook verification failed');
+      throw new Error('Webhook authentication failed');
+      
+    } else {
+      // Handle unexpected errors
+      console.error('Unexpected error:', error);
+      throw error;
+    }
+  }
+}
+```
+
+### 2. Advanced Error Handling with Retry
+
+```typescript
+async function sendWithRetry(
+  client: WhatsAppClient,
+  to: string,
+  message: string,
+  maxRetries: number = 3
+): Promise<MessageResponse> {
+  let lastError: Error;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await client.sendText(to, message);
+      
+    } catch (error) {
+      lastError = error;
+      
+      if (error instanceof RateLimitError) {
+        // Respect rate limit
+        const delay = error.retryAfter * 1000;
+        console.log(`Rate limited. Waiting ${error.retryAfter}s before retry ${attempt}/${maxRetries}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+        
+      } else if (error instanceof WhatsAppApiError && error.status >= 500) {
+        // Retry on server errors
+        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+        console.log(`Server error. Retrying in ${delay}ms (attempt ${attempt}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+        
+      } else {
+        // Don't retry on client errors
+        throw error;
+      }
+    }
+  }
+  
+  throw lastError;
+}
+```
+
+### 3. Centralized Error Handling
+
+```typescript
+class WhatsAppErrorHandler {
+  private static logError(error: WhatsAppError, context?: any): void {
+    const logData = {
+      error: error.name,
+      message: error.message,
+      timestamp: new Date().toISOString(),
+      context
+    };
+    
+    // Log to your monitoring service
+    console.error(JSON.stringify(logData));
+  }
+  
+  static async handleSendMessage(
+    client: WhatsAppClient,
+    to: string,
+    message: string
+  ): Promise<MessageResponse> {
+    try {
+      return await client.sendText(to, message);
+      
+    } catch (error) {
+      this.logError(error as WhatsAppError, { to, messageLength: message.length });
+      
+      if (error instanceof WhatsAppApiError) {
+        return this.handleApiError(error, client, to, message);
+      } else if (error instanceof MessageValidationError) {
+        return this.handleValidationError(error);
+      } else if (error instanceof RateLimitError) {
+        return this.handleRateLimit(error, client, to, message);
+      }
+      
+      throw error;
+    }
+  }
+  
+  private static async handleApiError(
+    error: WhatsAppApiError,
+    client: WhatsAppClient,
+    to: string,
+    message: string
+  ): Promise<MessageResponse> {
+    switch (error.code) {
+      case 130: // Invalid phone number
+        throw new Error('Please provide a valid phone number with country code');
+        
+      case 131: // Not on WhatsApp
+        throw new Error('This phone number is not registered with WhatsApp');
+        
+      case 132: // Undeliverable
+        // Try with a fallback message
+        try {
+          return await client.sendText(to, 'Hello! We tried to send you a message but encountered an issue.');
+        } catch {
+          throw new Error('Unable to deliver message to this number');
+        }
+        
+      default:
+        throw new Error(`Service temporarily unavailable. Error code: ${error.code}`);
+    }
+  }
+  
+  private static handleValidationError(error: MessageValidationError): never {
+    const fieldMessages: Record<string, string> = {
+      'to': 'Please provide a valid phone number',
+      'text.body': 'Message text cannot be empty',
+      'interactive.action.buttons': 'Too many buttons (maximum 3 allowed)'
+    };
+    
+    const userMessage = fieldMessages[error.field] || `Invalid ${error.field}`;
+    throw new Error(userMessage);
+  }
+  
+  private static async handleRateLimit(
+    error: RateLimitError,
+    client: WhatsAppClient,
+    to: string,
+    message: string
+  ): Promise<MessageResponse> {
+    // Wait and retry once
+    await new Promise(resolve => setTimeout(resolve, error.retryAfter * 1000));
+    return await client.sendText(to, message);
+  }
+}
+
+// Usage
+const response = await WhatsAppErrorHandler.handleSendMessage(client, '+1234567890', 'Hello!');
+```
+
+### 4. Error Handling in Webhook Processors
+
+```typescript
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    try {
+      await processTextMessage(message);
+    } catch (error) {
+      console.error('Error processing text message:', error);
+      
+      // Send error message to user
+      try {
+        await client.sendText(
+          message.from,
+          'Sorry, I encountered an error processing your message. Please try again.'
+        );
+      } catch (sendError) {
+        console.error('Failed to send error message:', sendError);
+      }
+    }
+  },
+  
+  onError: async (error, message) => {
+    console.error('Webhook processing error:', {
+      error: error.message,
+      messageId: message?.id,
+      messageType: message?.type,
+      from: message?.from
+    });
+    
+    // Notify monitoring service
+    await notifyErrorMonitoring({
+      service: 'whatsapp-webhook',
+      error: error.message,
+      severity: 'high',
+      metadata: { messageId: message?.id }
+    });
+  }
+});
+```
+
+## Production Error Monitoring
+
+### 1. Error Metrics Collection
+
+```typescript
+class ErrorMetrics {
+  private static errorCounts = new Map<string, number>();
+  
+  static recordError(error: WhatsAppError): void {
+    const errorType = error.name;
+    const count = this.errorCounts.get(errorType) || 0;
+    this.errorCounts.set(errorType, count + 1);
+    
+    // Send to metrics service (e.g., DataDog, CloudWatch)
+    this.sendMetric(`whatsapp.errors.${errorType}`, 1);
+  }
+  
+  static getErrorCounts(): Record<string, number> {
+    return Object.fromEntries(this.errorCounts);
+  }
+  
+  private static sendMetric(name: string, value: number): void {
+    // Implementation depends on your metrics service
+    console.log(`METRIC: ${name} = ${value}`);
+  }
+}
+
+// Usage in error handler
+try {
+  await client.sendText(to, message);
+} catch (error) {
+  if (error instanceof WhatsAppError) {
+    ErrorMetrics.recordError(error);
+  }
+  throw error;
+}
+```
+
+### 2. Error Alerting
+
+```typescript
+class ErrorAlerting {
+  private static readonly ALERT_THRESHOLDS = {
+    WhatsAppApiError: 10,      // Alert after 10 API errors
+    RateLimitError: 5,         // Alert after 5 rate limit errors
+    MediaProcessingError: 3     // Alert after 3 media errors
+  };
+  
+  private static errorCounts = new Map<string, number>();
+  
+  static async checkAlert(error: WhatsAppError): Promise<void> {
+    const errorType = error.name as keyof typeof this.ALERT_THRESHOLDS;
+    const count = this.errorCounts.get(errorType) || 0;
+    const newCount = count + 1;
+    
+    this.errorCounts.set(errorType, newCount);
+    
+    const threshold = this.ALERT_THRESHOLDS[errorType];
+    if (threshold && newCount >= threshold) {
+      await this.sendAlert(errorType, newCount, error);
+      // Reset counter after alert
+      this.errorCounts.set(errorType, 0);
+    }
+  }
+  
+  private static async sendAlert(
+    errorType: string,
+    count: number,
+    lastError: WhatsAppError
+  ): Promise<void> {
+    const alertMessage = {
+      service: 'whatsapp-sdk',
+      level: 'error',
+      title: `High ${errorType} frequency`,
+      description: `${count} ${errorType} errors in the last period`,
+      lastError: lastError.message,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Send to alerting service (Slack, PagerDuty, etc.)
+    console.error('ALERT:', alertMessage);
+  }
+}
+```
+
+## Best Practices
+
+### 1. Always Handle Specific Error Types
+
+```typescript
+// ❌ Bad: Generic error handling
+try {
+  await client.sendText(to, message);
+} catch (error) {
+  console.error('Error:', error.message);
+  throw new Error('Send failed');
+}
+
+// ✅ Good: Specific error handling
+try {
+  await client.sendText(to, message);
+} catch (error) {
+  if (error instanceof MessageValidationError) {
+    throw new Error(`Invalid ${error.field}: ${error.message}`);
+  } else if (error instanceof WhatsAppApiError) {
+    throw new Error(`WhatsApp API error: ${error.details}`);
+  }
+  throw error;
+}
+```
+
+### 2. Implement Retry Logic for Transient Errors
+
+```typescript
+// Retry on network errors, rate limits, and server errors
+const RETRYABLE_ERRORS = [RateLimitError];
+const RETRYABLE_API_CODES = [500, 502, 503, 504];
+
+function isRetryable(error: Error): boolean {
+  if (RETRYABLE_ERRORS.some(ErrorType => error instanceof ErrorType)) {
+    return true;
+  }
+  
+  if (error instanceof WhatsAppApiError) {
+    return RETRYABLE_API_CODES.includes(error.status);
+  }
+  
+  return false;
+}
+```
+
+### 3. Log Errors with Context
+
+```typescript
+function logError(error: WhatsAppError, context: any): void {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    error: {
+      name: error.name,
+      message: error.message,
+      ...(error instanceof WhatsAppApiError && {
+        apiCode: error.code,
+        apiType: error.type,
+        traceId: error.fbtrace_id
+      })
+    },
+    context
+  };
+  
+  console.error(JSON.stringify(logEntry));
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Validation System"
+    icon="check-double"
+    href="/core-concepts/validation"
+  >
+    Learn about input validation and data sanitization
+  </Card>
+  <Card
+    title="Production Deployment"
+    icon="rocket"
+    href="/guides/production-deployment"
+  >
+    Deploy with proper error monitoring and alerting
+  </Card>
+  <Card
+    title="API Reference"
+    icon="book-open"
+    href="/api-reference/errors"
+  >
+    Complete error class reference documentation
+  </Card>
+  <Card
+    title="Best Practices"
+    icon="lightbulb"
+    href="/guides/best-practices"
+  >
+    Production-ready error handling patterns
+  </Card>
+</CardGroup>

@@ -1,0 +1,547 @@
+---
+title: Location Messages
+description: Send and receive location data with GPS coordinates, addresses, and venue information
+---
+
+# Location Messages
+
+Share location data including GPS coordinates, addresses, and venue information. Location messages are perfect for business locations, delivery addresses, meeting points, and navigation.
+
+## Basic Location Message
+
+Send simple GPS coordinates:
+
+```typescript
+await client.sendLocation(
+  '+573001234567',
+  4.6097,    // Latitude
+  -74.0817,  // Longitude
+);
+```
+
+## Location with Name and Address
+
+```typescript
+await client.sendLocation(
+  '+573001234567',
+  4.6097,     // Latitude  
+  -74.0817,   // Longitude
+  {
+    name: 'TechStore - Main Branch',
+    address: 'Carrera 10 #20-30, Bogotá, Colombia'
+  }
+);
+```
+
+## Detailed Location Information
+
+```typescript
+await client.sendLocation(
+  '+573001234567',
+  40.7128,    // New York City
+  -74.0060,
+  {
+    name: 'Central Park',
+    address: 'New York, NY 10024, United States',
+    url: 'https://www.centralparknyc.org/'  // Optional website
+  }
+);
+```
+
+## Business Location Examples
+
+### Store Location
+
+```typescript
+const sendStoreLocation = async (customerPhone: string) => {
+  await client.sendLocation(
+    customerPhone,
+    4.6097,
+    -74.0817,
+    {
+      name: 'TechStore Bogotá',
+      address: 'Carrera 10 #20-30, Chapinero, Bogotá, Colombia'
+    }
+  );
+  
+  // Follow up with store details
+  await client.sendText(
+    customerPhone,
+    '🏪 TechStore Bogotá\n\n' +
+    '📞 Phone: +57 300 123 4567\n' +
+    '🕒 Hours: Mon-Sat 9AM-8PM\n' +
+    '🚗 Free parking available\n' +
+    '🚇 Near Chapinero Metro Station\n\n' +
+    'How can we help you today?'
+  );
+};
+```
+
+### Delivery Location
+
+```typescript
+const sendDeliveryLocation = async (customerPhone: string, deliveryAddress: any) => {
+  await client.sendLocation(
+    customerPhone,
+    deliveryAddress.latitude,
+    deliveryAddress.longitude,
+    {
+      name: 'Delivery Address',
+      address: deliveryAddress.fullAddress
+    }
+  );
+  
+  await client.sendText(
+    customerPhone,
+    '📦 Your delivery is on the way!\n\n' +
+    `📍 Delivery to: ${deliveryAddress.fullAddress}\n` +
+    '🚚 Estimated arrival: 30-45 minutes\n' +
+    '📞 Driver will call when nearby\n\n' +
+    'Order ID: #' + deliveryAddress.orderId
+  );
+};
+```
+
+### Meeting Point
+
+```typescript
+const sendMeetingLocation = async (attendeePhone: string) => {
+  await client.sendLocation(
+    attendeePhone,
+    4.6351,
+    -74.0703,
+    {
+      name: 'Conference Center - Room 301',
+      address: 'Calle 72 #10-34, Bogotá, Colombia'
+    }
+  );
+  
+  await client.sendText(
+    attendeePhone,
+    '📅 Meeting Reminder\n\n' +
+    '🕐 Time: Tomorrow 2:00 PM\n' +
+    '📍 Location: Conference Center Room 301\n' +
+    '👥 Duration: 90 minutes\n' +
+    '💼 Topic: Product Demo\n\n' +
+    'Please arrive 10 minutes early for setup.'
+  );
+};
+```
+
+## Receiving Location Messages
+
+Handle incoming location data from users:
+
+```typescript
+const processor = client.createWebhookProcessor({
+  onLocationMessage: async (message) => {
+    const location = message.location;
+    const userPhone = message.from;
+    
+    console.log('Received location:', {
+      latitude: location.latitude,
+      longitude: location.longitude,
+      name: location.name,
+      address: location.address
+    });
+    
+    // Acknowledge receipt
+    await client.sendText(
+      userPhone,
+      `📍 Location received!\n\n` +
+      `📌 ${location.name || 'Location'}\n` +
+      `📮 ${location.address || 'Coordinates: ' + location.latitude + ', ' + location.longitude}\n\n` +
+      `Thank you for sharing your location! 🗺️`
+    );
+    
+    // Calculate distance to nearest store
+    const nearestStore = await findNearestStore(location.latitude, location.longitude);
+    
+    if (nearestStore) {
+      await client.sendText(
+        userPhone,
+        `🏪 Nearest Store: ${nearestStore.name}\n` +
+        `📏 Distance: ${nearestStore.distance} km\n` +
+        `⏱️ Travel time: ~${nearestStore.travelTime} minutes\n\n` +
+        `Would you like directions?`
+      );
+    }
+    
+    // Save location for future reference
+    await saveCustomerLocation(userPhone, location);
+  }
+});
+```
+
+## Location-Based Services
+
+### Find Nearest Store
+
+```typescript
+const findNearestStore = async (latitude: number, longitude: number) => {
+  const stores = [
+    { 
+      name: 'TechStore Bogotá Norte', 
+      lat: 4.6751, 
+      lon: -74.0618,
+      address: 'Calle 127 #15-45'
+    },
+    { 
+      name: 'TechStore Bogotá Centro', 
+      lat: 4.6097, 
+      lon: -74.0817,
+      address: 'Carrera 10 #20-30'
+    },
+    { 
+      name: 'TechStore Bogotá Sur', 
+      lat: 4.5481, 
+      lon: -74.1141,
+      address: 'Calle 45 Sur #25-10'
+    }
+  ];
+  
+  const distances = stores.map(store => ({
+    ...store,
+    distance: calculateDistance(latitude, longitude, store.lat, store.lon)
+  }));
+  
+  return distances.sort((a, b) => a.distance - b.distance)[0];
+};
+
+// Haversine formula for distance calculation
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+    
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distance = R * c;
+  
+  return Math.round(distance * 10) / 10; // Round to 1 decimal place
+};
+```
+
+### Delivery Zone Validation
+
+```typescript
+const validateDeliveryZone = async (latitude: number, longitude: number): Promise<boolean> => {
+  const deliveryZones = [
+    { name: 'Zone 1', centerLat: 4.6097, centerLon: -74.0817, radius: 10 },
+    { name: 'Zone 2', centerLat: 4.6751, centerLon: -74.0618, radius: 8 },
+    { name: 'Zone 3', centerLat: 4.5481, centerLon: -74.1141, radius: 12 }
+  ];
+  
+  return deliveryZones.some(zone => {
+    const distance = calculateDistance(latitude, longitude, zone.centerLat, zone.centerLon);
+    return distance <= zone.radius;
+  });
+};
+
+const handleDeliveryRequest = async (userPhone: string, userLocation: any) => {
+  const isInDeliveryZone = await validateDeliveryZone(
+    userLocation.latitude, 
+    userLocation.longitude
+  );
+  
+  if (isInDeliveryZone) {
+    await client.sendText(
+      userPhone,
+      '✅ Great! We deliver to your area.\n\n' +
+      '🚚 Delivery fee: $3.99\n' +
+      '⏱️ Estimated time: 30-45 minutes\n\n' +
+      'Would you like to place an order?'
+    );
+  } else {
+    const nearestZone = await findNearestDeliveryZone(userLocation.latitude, userLocation.longitude);
+    
+    await client.sendText(
+      userPhone,
+      '❌ Sorry, we don\'t deliver to your area yet.\n\n' +
+      `📍 Nearest delivery zone: ${nearestZone.name}\n` +
+      `📏 Distance: ${nearestZone.distance} km\n\n` +
+      '💡 You can pick up from our nearest store instead!'
+    );
+  }
+};
+```
+
+### Location-Based Promotions
+
+```typescript
+const sendLocationBasedOffers = async (userPhone: string, userLocation: any) => {
+  const nearbyStores = await findNearbyStores(userLocation.latitude, userLocation.longitude, 5); // Within 5km
+  
+  if (nearbyStores.length === 0) {
+    return; // No nearby stores
+  }
+  
+  const offers = await getLocationOffers(nearbyStores[0].id);
+  
+  if (offers.length > 0) {
+    let message = `🎉 Special offers near you!\n\n`;
+    message += `📍 ${nearbyStores[0].name}\n`;
+    message += `📏 ${nearbyStores[0].distance} km away\n\n`;
+    
+    offers.forEach((offer, index) => {
+      message += `${index + 1}. ${offer.title}\n`;
+      message += `   💰 ${offer.discount}% OFF\n`;
+      message += `   ⏰ Valid until ${offer.validUntil}\n\n`;
+    });
+    
+    message += `Visit us today! 🛍️`;
+    
+    await client.sendText(userPhone, message);
+    
+    // Send store location
+    await client.sendLocation(
+      userPhone,
+      nearbyStores[0].lat,
+      nearbyStores[0].lon,
+      {
+        name: nearbyStores[0].name,
+        address: nearbyStores[0].address
+      }
+    );
+  }
+};
+```
+
+## Advanced Location Features
+
+### Location with Interactive Buttons
+
+```typescript
+const sendLocationWithActions = async (userPhone: string) => {
+  // Send location first
+  await client.sendLocation(
+    userPhone,
+    4.6097,
+    -74.0817,
+    {
+      name: 'TechStore Main Branch',
+      address: 'Carrera 10 #20-30, Bogotá, Colombia'
+    }
+  );
+  
+  // Follow with action buttons
+  await client.sendButtons(
+    userPhone,
+    'What would you like to do?',
+    [
+      { id: 'get_directions', title: '🗺️ Get Directions' },
+      { id: 'call_store', title: '📞 Call Store' },
+      { id: 'store_hours', title: '🕒 Store Hours' }
+    ],
+    {
+      header: { type: 'text', text: '📍 TechStore Location' }
+    }
+  );
+};
+```
+
+### Multiple Location Options
+
+```typescript
+const sendMultipleLocations = async (userPhone: string, searchQuery: string) => {
+  const locations = await searchLocations(searchQuery);
+  
+  if (locations.length === 0) {
+    await client.sendText(userPhone, `No locations found for "${searchQuery}"`);
+    return;
+  }
+  
+  // Send list of locations
+  await client.sendList(
+    userPhone,
+    `Found ${locations.length} locations for "${searchQuery}":`,
+    'Select Location',
+    [
+      {
+        title: 'Store Locations',
+        rows: locations.map((location, index) => ({
+          id: `location_${index}`,
+          title: location.name,
+          description: `${location.distance} km away - ${location.address}`
+        }))
+      }
+    ]
+  );
+};
+
+// Handle location selection
+const processor = client.createWebhookProcessor({
+  onListSelect: async (message) => {
+    if (message.interactive.list_id.startsWith('location_')) {
+      const locationIndex = parseInt(message.interactive.list_id.split('_')[1]);
+      const location = storedLocations[locationIndex]; // Retrieve from storage
+      
+      await client.sendLocation(
+        message.from,
+        location.latitude,
+        location.longitude,
+        {
+          name: location.name,
+          address: location.address
+        }
+      );
+    }
+  }
+});
+```
+
+### Live Location Tracking
+
+```typescript
+// Note: WhatsApp doesn't support live location via API
+// This is for handling live locations received from users
+
+const processor = client.createWebhookProcessor({
+  onLocationMessage: async (message) => {
+    if (message.location.live_location_timestamp) {
+      // This is a live location update
+      console.log('Live location update received:', {
+        timestamp: message.location.live_location_timestamp,
+        latitude: message.location.latitude,
+        longitude: message.location.longitude
+      });
+      
+      // Update delivery tracking
+      await updateDeliveryTracking(message.from, message.location);
+      
+      await client.sendText(
+        message.from,
+        '📍 Location updated! We\'re tracking your delivery. ⏱️'
+      );
+    }
+  }
+});
+```
+
+## Location Utilities
+
+### Address Geocoding
+
+```typescript
+const geocodeAddress = async (address: string): Promise<{latitude: number, longitude: number} | null> => {
+  try {
+    // Use a geocoding service (example with Google Maps API)
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_API_KEY}`
+    );
+    
+    const data = await response.json();
+    
+    if (data.results && data.results.length > 0) {
+      const location = data.results[0].geometry.location;
+      return {
+        latitude: location.lat,
+        longitude: location.lng
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
+};
+```
+
+### Reverse Geocoding
+
+```typescript
+const reverseGeocode = async (latitude: number, longitude: number): Promise<string | null> => {
+  try {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_API_KEY}`
+    );
+    
+    const data = await response.json();
+    
+    if (data.results && data.results.length > 0) {
+      return data.results[0].formatted_address;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Reverse geocoding error:', error);
+    return null;
+  }
+};
+```
+
+## Best Practices
+
+### 1. Location Privacy
+
+```typescript
+// Always ask for permission before requesting location
+const requestLocationPermission = async (userPhone: string, purpose: string) => {
+  await client.sendText(
+    userPhone,
+    `📍 We'd like to access your location to ${purpose}.\n\n` +
+    `Your location data will be used only for this purpose and not stored permanently.\n\n` +
+    `Please share your location if you're comfortable doing so. 🔒`
+  );
+};
+```
+
+### 2. Location Accuracy
+
+```typescript
+// Validate location coordinates
+const isValidLocation = (latitude: number, longitude: number): boolean => {
+  return latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
+};
+
+// Handle invalid locations
+if (!isValidLocation(receivedLat, receivedLon)) {
+  await client.sendText(
+    userPhone,
+    '❌ Invalid location coordinates received. Please try sharing your location again.'
+  );
+  return;
+}
+```
+
+### 3. Fallback Options
+
+```typescript
+const handleLocationService = async (userPhone: string) => {
+  await client.sendButtons(
+    userPhone,
+    'How would you like to provide your location?',
+    [
+      { id: 'share_location', title: '📍 Share Location' },
+      { id: 'enter_address', title: '📝 Enter Address' },
+      { id: 'select_area', title: '🗺️ Select from Map' }
+    ]
+  );
+};
+```
+
+### 4. Performance Optimization
+
+```typescript
+// Cache frequently used locations
+const locationCache = new Map();
+
+const getCachedLocation = (key: string) => {
+  return locationCache.get(key);
+};
+
+const setCachedLocation = (key: string, location: any) => {
+  locationCache.set(key, location);
+  
+  // Auto-expire after 1 hour
+  setTimeout(() => {
+    locationCache.delete(key);
+  }, 3600000);
+};
+```
+
+Location messages enable powerful location-based services, from simple store directions to complex delivery systems and proximity-based marketing.

@@ -1,0 +1,588 @@
+---
+title: "Advanced Configuration"
+description: "Configure the WhatsApp Client SDK for production use with timeouts, retry logic, custom endpoints, and more"
+---
+
+# Advanced Configuration
+
+The WhatsApp Client SDK provides extensive configuration options to customize behavior for your specific use case and production requirements.
+
+## Basic Configuration
+
+The minimum required configuration to initialize the client:
+
+```typescript
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+});
+```
+
+## Complete Configuration Interface
+
+Here's the full configuration interface with all available options:
+
+```typescript
+interface WhatsAppConfig {
+  // Required
+  accessToken: string;           // Meta access token
+  phoneNumberId: string;         // WhatsApp Business phone number ID
+  
+  // Optional API Configuration
+  baseUrl?: string;             // Default: 'https://graph.facebook.com'
+  apiVersion?: string;          // Default: 'v23.0'
+  timeout?: number;             // Default: 30000 (30 seconds)
+  
+  // Optional Business Configuration
+  webhookVerifyToken?: string;  // For webhook verification
+  businessId?: string;          // Business account ID
+}
+```
+
+## Configuration Examples
+
+### Production Configuration
+
+```typescript
+const client = new WhatsAppClient({
+  // Required credentials
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  
+  // Production settings
+  timeout: 60000,               // 60 second timeout for slower networks
+  apiVersion: 'v23.0',          // Specific API version
+  baseUrl: 'https://graph.facebook.com',
+  
+  // Webhook configuration
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN!,
+  businessId: process.env.WHATSAPP_BUSINESS_ID,
+});
+```
+
+### Development Configuration
+
+```typescript
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  
+  // Development settings
+  timeout: 10000,               // Shorter timeout for quick feedback
+  webhookVerifyToken: 'dev-webhook-token',
+});
+```
+
+### High-Volume Configuration
+
+```typescript
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  
+  // High-volume settings
+  timeout: 120000,              // 2 minute timeout for bulk operations
+  apiVersion: 'v23.0',          // Latest stable version
+  businessId: process.env.WHATSAPP_BUSINESS_ID!,
+});
+```
+
+## Configuration Options Explained
+
+### API Version
+
+<Tabs>
+  <Tab title="Latest Stable (Recommended)">
+    ```typescript
+    const client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+      apiVersion: 'v23.0', // Latest stable version
+    });
+    ```
+  </Tab>
+  <Tab title="Previous Version">
+    ```typescript
+    const client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+      apiVersion: 'v22.0', // Previous version
+    });
+    ```
+  </Tab>
+  <Tab title="Auto-detect (Default)">
+    ```typescript
+    const client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+      // apiVersion defaults to 'v23.0'
+    });
+    ```
+  </Tab>
+</Tabs>
+
+<Info>
+The SDK defaults to the latest stable API version. Only specify a different version if you need compatibility with older API features.
+</Info>
+
+### Timeout Configuration
+
+Configure request timeouts based on your use case:
+
+<CodeGroup>
+```typescript Quick Operations (10s)
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  timeout: 10000, // 10 seconds - for quick operations
+});
+```
+
+```typescript Standard Operations (30s)
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  timeout: 30000, // 30 seconds - default
+});
+```
+
+```typescript Media Operations (60s)
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  timeout: 60000, // 60 seconds - for media uploads
+});
+```
+
+```typescript Bulk Operations (120s)
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  timeout: 120000, // 2 minutes - for bulk operations
+});
+```
+</CodeGroup>
+
+### Base URL Configuration
+
+Use different endpoints for testing or custom deployments:
+
+<Tabs>
+  <Tab title="Production (Default)">
+    ```typescript
+    const client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+      baseUrl: 'https://graph.facebook.com', // Default
+    });
+    ```
+  </Tab>
+  <Tab title="Beta Testing">
+    ```typescript
+    const client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+      baseUrl: 'https://graph.beta.facebook.com',
+    });
+    ```
+  </Tab>
+  <Tab title="Custom Proxy">
+    ```typescript
+    const client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+      baseUrl: 'https://your-proxy.example.com/graph',
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Environment-Based Configuration
+
+Set up different configurations for different environments:
+
+<CodeGroup>
+```typescript config/development.ts
+export const developmentConfig = {
+  accessToken: process.env.WHATSAPP_DEV_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_DEV_PHONE_NUMBER_ID!,
+  timeout: 10000,
+  webhookVerifyToken: 'dev-webhook-token',
+  apiVersion: 'v23.0' as const,
+};
+```
+
+```typescript config/staging.ts
+export const stagingConfig = {
+  accessToken: process.env.WHATSAPP_STAGING_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_STAGING_PHONE_NUMBER_ID!,
+  timeout: 30000,
+  webhookVerifyToken: process.env.WHATSAPP_STAGING_WEBHOOK_TOKEN!,
+  businessId: process.env.WHATSAPP_STAGING_BUSINESS_ID,
+  apiVersion: 'v23.0' as const,
+};
+```
+
+```typescript config/production.ts
+export const productionConfig = {
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  timeout: 60000,
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN!,
+  businessId: process.env.WHATSAPP_BUSINESS_ID!,
+  apiVersion: 'v23.0' as const,
+  baseUrl: 'https://graph.facebook.com',
+};
+```
+
+```typescript config/index.ts
+import { developmentConfig } from './development';
+import { stagingConfig } from './staging';
+import { productionConfig } from './production';
+
+const configs = {
+  development: developmentConfig,
+  staging: stagingConfig,
+  production: productionConfig,
+};
+
+const environment = process.env.NODE_ENV as keyof typeof configs || 'development';
+
+export const config = configs[environment];
+
+// Usage
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+import { config } from './config';
+
+const client = new WhatsAppClient(config);
+```
+</CodeGroup>
+
+## Configuration Validation
+
+The SDK automatically validates your configuration and provides helpful error messages:
+
+```typescript
+import { WhatsAppClient, ConfigurationError } from 'whatsapp-client-sdk';
+
+try {
+  const client = new WhatsAppClient({
+    accessToken: '', // Invalid: empty string
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  });
+} catch (error) {
+  if (error instanceof ConfigurationError) {
+    console.error('Configuration error:', error.message);
+    console.error('Missing fields:', error.missingFields);
+    // Output: Missing fields: ['accessToken']
+  }
+}
+```
+
+## Runtime Configuration Updates
+
+Get and verify current configuration:
+
+```typescript
+// Get current configuration (access token will be masked)
+const config = client.getConfig();
+console.log('Current config:', config);
+// Output: { accessToken: '***', phoneNumberId: '123...', timeout: 30000, ... }
+
+// Test connection with current configuration
+const isConnected = await client.testConnection();
+console.log('Connection status:', isConnected);
+
+// Verify specific configuration
+if (!config.webhookVerifyToken) {
+  console.warn('Webhook verification not configured');
+}
+```
+
+## Configuration Best Practices
+
+### 1. Environment Variables
+
+<CodeGroup>
+```bash .env.development
+# Development environment
+NODE_ENV=development
+WHATSAPP_ACCESS_TOKEN=your_dev_token
+WHATSAPP_PHONE_NUMBER_ID=your_dev_phone_id
+WHATSAPP_WEBHOOK_TOKEN=dev_webhook_token
+```
+
+```bash .env.staging
+# Staging environment
+NODE_ENV=staging
+WHATSAPP_ACCESS_TOKEN=your_staging_token
+WHATSAPP_PHONE_NUMBER_ID=your_staging_phone_id
+WHATSAPP_WEBHOOK_TOKEN=staging_webhook_token
+WHATSAPP_BUSINESS_ID=your_staging_business_id
+```
+
+```bash .env.production
+# Production environment
+NODE_ENV=production
+WHATSAPP_ACCESS_TOKEN=your_prod_token
+WHATSAPP_PHONE_NUMBER_ID=your_prod_phone_id
+WHATSAPP_WEBHOOK_TOKEN=prod_webhook_token
+WHATSAPP_BUSINESS_ID=your_prod_business_id
+```
+</CodeGroup>
+
+### 2. Configuration Factory Pattern
+
+```typescript
+import { WhatsAppClient, WhatsAppConfig } from 'whatsapp-client-sdk';
+
+class WhatsAppClientFactory {
+  private static instance: WhatsAppClient;
+  
+  static createClient(environment: 'dev' | 'staging' | 'prod' = 'dev'): WhatsAppClient {
+    if (this.instance) {
+      return this.instance;
+    }
+    
+    const config: WhatsAppConfig = {
+      accessToken: process.env[`WHATSAPP_${environment.toUpperCase()}_ACCESS_TOKEN`]!,
+      phoneNumberId: process.env[`WHATSAPP_${environment.toUpperCase()}_PHONE_NUMBER_ID`]!,
+      timeout: environment === 'prod' ? 60000 : 30000,
+      apiVersion: 'v23.0',
+    };
+    
+    if (environment !== 'dev') {
+      config.webhookVerifyToken = process.env[`WHATSAPP_${environment.toUpperCase()}_WEBHOOK_TOKEN`];
+      config.businessId = process.env[`WHATSAPP_${environment.toUpperCase()}_BUSINESS_ID`];
+    }
+    
+    this.instance = new WhatsAppClient(config);
+    return this.instance;
+  }
+  
+  static getInstance(): WhatsAppClient {
+    if (!this.instance) {
+      throw new Error('Client not initialized. Call createClient() first.');
+    }
+    return this.instance;
+  }
+}
+
+// Usage
+const client = WhatsAppClientFactory.createClient('prod');
+```
+
+### 3. Configuration with Secrets Management
+
+```typescript
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+import { SecretsManager } from '@aws-sdk/client-secrets-manager';
+
+async function createClientWithSecretsManager() {
+  const secretsManager = new SecretsManager({ region: 'us-east-1' });
+  
+  const secret = await secretsManager.getSecretValue({
+    SecretId: 'whatsapp-credentials'
+  });
+  
+  const credentials = JSON.parse(secret.SecretString!);
+  
+  return new WhatsAppClient({
+    accessToken: credentials.accessToken,
+    phoneNumberId: credentials.phoneNumberId,
+    webhookVerifyToken: credentials.webhookVerifyToken,
+    businessId: credentials.businessId,
+    timeout: 60000,
+  });
+}
+```
+
+## Framework-Specific Configuration
+
+### Next.js Configuration
+
+```typescript
+// lib/whatsapp.ts
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN,
+  timeout: 30000,
+});
+
+export default client;
+
+// pages/api/whatsapp/send.ts
+import client from '../../../lib/whatsapp';
+
+export default async function handler(req, res) {
+  try {
+    const response = await client.sendText(req.body.to, req.body.message);
+    res.status(200).json(response);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+```
+
+### Express.js Configuration
+
+```typescript
+// config/whatsapp.ts
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+export const whatsappClient = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN,
+  timeout: 45000,
+});
+
+// app.ts
+import express from 'express';
+import { whatsappClient } from './config/whatsapp';
+
+const app = express();
+
+app.post('/api/send-message', async (req, res) => {
+  try {
+    const response = await whatsappClient.sendText(req.body.to, req.body.message);
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+```
+
+### NestJS Configuration
+
+```typescript
+// whatsapp/whatsapp.module.ts
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+@Module({
+  imports: [ConfigModule],
+  providers: [
+    {
+      provide: 'WHATSAPP_CLIENT',
+      useFactory: (configService: ConfigService) => {
+        return new WhatsAppClient({
+          accessToken: configService.get('WHATSAPP_ACCESS_TOKEN')!,
+          phoneNumberId: configService.get('WHATSAPP_PHONE_NUMBER_ID')!,
+          webhookVerifyToken: configService.get('WHATSAPP_WEBHOOK_TOKEN'),
+          timeout: 60000,
+        });
+      },
+      inject: [ConfigService],
+    },
+  ],
+  exports: ['WHATSAPP_CLIENT'],
+})
+export class WhatsAppModule {}
+
+// whatsapp/whatsapp.service.ts
+import { Injectable, Inject } from '@nestjs/common';
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+@Injectable()
+export class WhatsAppService {
+  constructor(
+    @Inject('WHATSAPP_CLIENT') private readonly client: WhatsAppClient
+  ) {}
+
+  async sendMessage(to: string, message: string) {
+    return this.client.sendText(to, message);
+  }
+}
+```
+
+## Troubleshooting Configuration Issues
+
+<AccordionGroup>
+  <Accordion title="ConfigurationError: Missing required fields">
+    Ensure all required environment variables are set:
+    ```bash
+    # Check if variables are loaded
+    echo $WHATSAPP_ACCESS_TOKEN
+    echo $WHATSAPP_PHONE_NUMBER_ID
+    ```
+    
+    Make sure you're loading environment variables:
+    ```typescript
+    import 'dotenv/config'; // At the top of your main file
+    ```
+  </Accordion>
+  
+  <Accordion title="Connection timeout errors">
+    Increase the timeout value based on your network conditions:
+    ```typescript
+    const client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+      timeout: 60000, // Increase from default 30000
+    });
+    ```
+  </Accordion>
+  
+  <Accordion title="Invalid API version">
+    Use a supported API version:
+    ```typescript
+    // Supported versions: v23.0, v22.0, v21.0
+    const client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+      apiVersion: 'v23.0', // Use latest stable
+    });
+    ```
+  </Accordion>
+  
+  <Accordion title="Webhook verification fails">
+    Ensure webhook token matches Meta configuration:
+    ```typescript
+    const client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+      webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN!, // Must match Meta
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Core Concepts"
+    icon="brain"
+    href="/core-concepts/architecture"
+  >
+    Learn about the SDK's internal architecture and design
+  </Card>
+  <Card
+    title="Error Handling"
+    icon="shield"
+    href="/core-concepts/errors"
+  >
+    Understand error types and handling strategies
+  </Card>
+  <Card
+    title="Webhook Setup"
+    icon="webhook"
+    href="/webhooks/overview"
+  >
+    Configure webhooks for receiving messages
+  </Card>
+  <Card
+    title="Production Guide"
+    icon="rocket"
+    href="/guides/production-deployment"
+  >
+    Deploy your configuration to production
+  </Card>
+</CardGroup>

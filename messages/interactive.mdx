@@ -1,0 +1,549 @@
+---
+title: Interactive Messages
+description: Create engaging interactive messages with buttons, lists, and flows
+---
+
+# Interactive Messages
+
+Create engaging user experiences with interactive buttons, lists, and flows. Interactive messages allow users to respond with predefined options, making conversations more structured and user-friendly.
+
+## Interactive Message Types
+
+| Type | Description | Max Options | Use Cases |
+|------|-------------|-------------|-----------|
+| **Buttons** | Up to 3 action buttons | 3 buttons | Quick actions, confirmations |
+| **Lists** | Dropdown menu with sections | 10 sections, 10 rows each | Catalogs, menus, categories |
+| **Flows** | Multi-step forms | Custom | Data collection, surveys |
+
+## Button Messages
+
+Create messages with up to 3 interactive buttons.
+
+### Basic Button Message
+
+```typescript
+await client.sendButtons(
+  '+573001234567',
+  'What would you like to do?',
+  [
+    { id: 'view_catalog', title: '📦 View Catalog' },
+    { id: 'contact_support', title: '💬 Contact Support' },
+    { id: 'track_order', title: '📋 Track Order' }
+  ]
+);
+```
+
+### Button Message with Header and Footer
+
+```typescript
+await client.sendButtons(
+  '+573001234567',
+  'Welcome to our store! How can we help you today?',
+  [
+    { id: 'browse_products', title: '🛍️ Browse Products' },
+    { id: 'check_offers', title: '🎉 Special Offers' },
+    { id: 'get_support', title: '🆘 Get Help' }
+  ],
+  {
+    header: {
+      type: 'text',
+      text: '🏪 TechStore - Main Menu'
+    },
+    footer: 'Choose an option to continue'
+  }
+);
+```
+
+### Button Message with Image Header
+
+```typescript
+await client.sendButtons(
+  '+573001234567',
+  'New product launch! Check out our latest smartphone.',
+  [
+    { id: 'buy_now', title: '💳 Buy Now' },
+    { id: 'learn_more', title: '📖 Learn More' },
+    { id: 'compare', title: '⚖️ Compare' }
+  ],
+  {
+    header: {
+      type: 'image',
+      image: {
+        link: 'https://example.com/smartphone.jpg'
+      }
+    },
+    footer: 'Limited time offer!'
+  }
+);
+```
+
+## List Messages
+
+Create dropdown menus organized in sections with multiple rows.
+
+### Basic List Message
+
+```typescript
+await client.sendList(
+  '+573001234567',
+  'Select a product category:',
+  'View Categories', // Button text to open list
+  [
+    {
+      title: 'Electronics',
+      rows: [
+        { 
+          id: 'smartphones', 
+          title: '📱 Smartphones', 
+          description: 'Latest models available' 
+        },
+        { 
+          id: 'laptops', 
+          title: '💻 Laptops', 
+          description: 'Work and gaming laptops' 
+        },
+        { 
+          id: 'tablets', 
+          title: '📟 Tablets', 
+          description: 'For work and entertainment' 
+        }
+      ]
+    }
+  ]
+);
+```
+
+### Multi-Section List
+
+```typescript
+await client.sendList(
+  '+573001234567',
+  'Browse our complete catalog:',
+  'Browse Catalog',
+  [
+    {
+      title: 'Technology',
+      rows: [
+        { 
+          id: 'tech_phones', 
+          title: '📱 Smartphones', 
+          description: 'iPhone, Samsung, Google Pixel' 
+        },
+        { 
+          id: 'tech_computers', 
+          title: '💻 Computers', 
+          description: 'Laptops, desktops, accessories' 
+        }
+      ]
+    },
+    {
+      title: 'Services',
+      rows: [
+        { 
+          id: 'service_repair', 
+          title: '🔧 Repair Service', 
+          description: 'Professional device repair' 
+        },
+        { 
+          id: 'service_support', 
+          title: '📞 Technical Support', 
+          description: '24/7 customer support' 
+        },
+        { 
+          id: 'service_warranty', 
+          title: '🛡️ Extended Warranty', 
+          description: 'Protect your investment' 
+        }
+      ]
+    },
+    {
+      title: 'Information',
+      rows: [
+        { 
+          id: 'info_hours', 
+          title: '🕒 Store Hours', 
+          description: 'Mon-Sat 9AM-8PM' 
+        },
+        { 
+          id: 'info_location', 
+          title: '📍 Store Location', 
+          description: 'Find us on the map' 
+        }
+      ]
+    }
+  ],
+  {
+    header: {
+      type: 'text',
+      text: '🏪 TechStore Catalog'
+    },
+    footer: 'Select any option to continue'
+  }
+);
+```
+
+## Handling Interactive Responses
+
+Use the webhook processor to handle button clicks and list selections.
+
+### Button Response Handler
+
+```typescript
+const processor = client.createWebhookProcessor({
+  onButtonClick: async (message) => {
+    const buttonId = message.interactive.button_id;
+    const userPhone = message.from;
+    
+    console.log(`Button clicked: ${buttonId} by ${userPhone}`);
+    
+    switch (buttonId) {
+      case 'view_catalog':
+        await client.sendList(
+          userPhone,
+          'Select a category to browse:',
+          'Browse Categories',
+          [
+            {
+              title: 'Featured Products',
+              rows: [
+                { id: 'featured_phones', title: '⭐ Featured Phones', description: 'Best sellers' },
+                { id: 'featured_laptops', title: '⭐ Featured Laptops', description: 'Top rated' }
+              ]
+            }
+          ]
+        );
+        break;
+        
+      case 'contact_support':
+        await client.sendText(
+          userPhone, 
+          '🆘 Connecting you with our support team...\n\n' +
+          'A support agent will contact you shortly. Average wait time: 2 minutes.'
+        );
+        
+        // Notify support team
+        await notifySupportTeam(userPhone);
+        break;
+        
+      case 'track_order':
+        await client.sendButtons(
+          userPhone,
+          'How would you like to track your order?',
+          [
+            { id: 'track_phone', title: '📱 By Phone Number' },
+            { id: 'track_email', title: '📧 By Email' },
+            { id: 'track_order_id', title: '🔢 By Order ID' }
+          ]
+        );
+        break;
+        
+      default:
+        await client.sendText(
+          userPhone, 
+          `✅ Option "${buttonId}" selected. Processing your request...`
+        );
+    }
+  }
+});
+```
+
+### List Selection Handler
+
+```typescript
+const processor = client.createWebhookProcessor({
+  onListSelect: async (message) => {
+    const listId = message.interactive.list_id;
+    const userPhone = message.from;
+    
+    console.log(`List item selected: ${listId} by ${userPhone}`);
+    
+    switch (listId) {
+      case 'smartphones':
+        await client.sendImage(userPhone, {
+          link: 'https://example.com/smartphone-catalog.jpg',
+          caption: '📱 Smartphone Catalog 2024\n\n' +
+                   '• iPhone 15 Pro - $999\n' +
+                   '• Samsung Galaxy S24 - $899\n' +
+                   '• Google Pixel 8 - $699\n\n' +
+                   'Would you like to see more details?'
+        });
+        break;
+        
+      case 'laptops':
+        await client.sendButtons(
+          userPhone,
+          '💻 Laptop Categories:\n\nChoose your preferred type:',
+          [
+            { id: 'gaming_laptops', title: '🎮 Gaming Laptops' },
+            { id: 'business_laptops', title: '💼 Business Laptops' },
+            { id: 'budget_laptops', title: '💰 Budget Laptops' }
+          ]
+        );
+        break;
+        
+      case 'service_repair':
+        await client.sendText(
+          userPhone,
+          '🔧 Repair Service Information\n\n' +
+          '• Free diagnosis\n' +
+          '• Same-day service for most issues\n' +
+          '• 90-day warranty on repairs\n' +
+          '• Certified technicians\n\n' +
+          'What device needs repair? Please describe the issue.'
+        );
+        break;
+        
+      case 'info_location':
+        await client.sendLocation(
+          userPhone,
+          4.6097,
+          -74.0817,
+          {
+            name: 'TechStore - Main Location',
+            address: 'Carrera 10 #20-30, Bogotá, Colombia'
+          }
+        );
+        
+        await client.sendText(
+          userPhone,
+          '📍 TechStore Location\n\n' +
+          '📧 Email: info@techstore.com\n' +
+          '📞 Phone: +57 300 123 4567\n' +
+          '🕒 Hours: Mon-Sat 9AM-8PM\n' +
+          '🚗 Free parking available'
+        );
+        break;
+        
+      default:
+        await client.sendText(
+          userPhone,
+          `You selected: ${listId}\n\nLet me get that information for you...`
+        );
+        
+        // Handle unknown selections
+        setTimeout(async () => {
+          await client.sendText(
+            userPhone,
+            'Sorry, that option is not available right now. Please try again or contact support.'
+          );
+        }, 2000);
+    }
+  }
+});
+```
+
+## Advanced Interactive Patterns
+
+### Multi-Step Conversation Flow
+
+```typescript
+// Store conversation state
+const conversationState = new Map();
+
+const handleMultiStepFlow = async (userPhone: string, step: string, data?: any) => {
+  const state = conversationState.get(userPhone) || {};
+  
+  switch (step) {
+    case 'start_order':
+      conversationState.set(userPhone, { step: 'select_category' });
+      
+      await client.sendList(
+        userPhone,
+        'Let\'s create your order! First, select a category:',
+        'Select Category',
+        [
+          {
+            title: 'Products',
+            rows: [
+              { id: 'cat_electronics', title: 'Electronics', description: 'Phones, laptops, etc.' },
+              { id: 'cat_accessories', title: 'Accessories', description: 'Cases, chargers, etc.' }
+            ]
+          }
+        ]
+      );
+      break;
+      
+    case 'category_selected':
+      state.category = data.category;
+      state.step = 'select_product';
+      conversationState.set(userPhone, state);
+      
+      // Show products based on category
+      await showProductsForCategory(userPhone, data.category);
+      break;
+      
+    case 'product_selected':
+      state.product = data.product;
+      state.step = 'select_quantity';
+      conversationState.set(userPhone, state);
+      
+      await client.sendButtons(
+        userPhone,
+        `Selected: ${data.product}\n\nHow many would you like?`,
+        [
+          { id: 'qty_1', title: '1 unit' },
+          { id: 'qty_2', title: '2 units' },
+          { id: 'qty_custom', title: 'Other amount' }
+        ]
+      );
+      break;
+      
+    case 'order_complete':
+      const finalState = conversationState.get(userPhone);
+      conversationState.delete(userPhone); // Clean up
+      
+      await client.sendText(
+        userPhone,
+        `✅ Order confirmed!\n\n` +
+        `📦 Product: ${finalState.product}\n` +
+        `📊 Quantity: ${finalState.quantity}\n` +
+        `💰 Total: $${finalState.total}\n\n` +
+        `Order ID: #${generateOrderId()}\n` +
+        `Estimated delivery: 2-3 business days`
+      );
+      break;
+  }
+};
+```
+
+### Dynamic Button Generation
+
+```typescript
+const createDynamicButtons = async (userPhone: string, context: string) => {
+  let buttons = [];
+  let message = '';
+  
+  switch (context) {
+    case 'user_preferences':
+      const userPrefs = await getUserPreferences(userPhone);
+      message = 'Based on your preferences:';
+      
+      if (userPrefs.likes_tech) {
+        buttons.push({ id: 'tech_deals', title: '💻 Tech Deals' });
+      }
+      if (userPrefs.likes_fashion) {
+        buttons.push({ id: 'fashion_deals', title: '👕 Fashion' });
+      }
+      if (buttons.length < 3) {
+        buttons.push({ id: 'all_deals', title: '🛍️ All Deals' });
+      }
+      break;
+      
+    case 'time_based':
+      const hour = new Date().getHours();
+      message = 'Good ' + (hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening') + '!';
+      
+      if (hour < 10) {
+        buttons = [
+          { id: 'breakfast_deals', title: '☕ Breakfast Deals' },
+          { id: 'daily_news', title: '📰 Daily News' }
+        ];
+      } else if (hour > 18) {
+        buttons = [
+          { id: 'dinner_deals', title: '🍽️ Dinner Deals' },
+          { id: 'evening_entertainment', title: '🎬 Entertainment' }
+        ];
+      }
+      
+      buttons.push({ id: 'main_menu', title: '🏠 Main Menu' });
+      break;
+  }
+  
+  if (buttons.length > 0) {
+    await client.sendButtons(userPhone, message, buttons);
+  }
+};
+```
+
+### Interactive Message Analytics
+
+```typescript
+const trackInteractiveEngagement = {
+  buttonClicks: new Map(),
+  listSelections: new Map(),
+  
+  trackButton: (buttonId: string, userPhone: string) => {
+    const key = `${buttonId}_${new Date().toDateString()}`;
+    const current = trackInteractiveEngagement.buttonClicks.get(key) || 0;
+    trackInteractiveEngagement.buttonClicks.set(key, current + 1);
+    
+    console.log(`Button ${buttonId} clicked ${current + 1} times today`);
+  },
+  
+  trackList: (listId: string, userPhone: string) => {
+    const key = `${listId}_${new Date().toDateString()}`;
+    const current = trackInteractiveEngagement.listSelections.get(key) || 0;
+    trackInteractiveEngagement.listSelections.set(key, current + 1);
+    
+    console.log(`List item ${listId} selected ${current + 1} times today`);
+  },
+  
+  getPopularOptions: () => {
+    const today = new Date().toDateString();
+    const todayButtons = Array.from(trackInteractiveEngagement.buttonClicks.entries())
+      .filter(([key]) => key.endsWith(today))
+      .sort(([,a], [,b]) => b - a);
+      
+    return todayButtons.slice(0, 5); // Top 5 buttons
+  }
+};
+```
+
+## Best Practices
+
+### 1. Clear Action Labels
+
+```typescript
+// ✅ Good - Clear and actionable
+{ id: 'buy_product', title: '💳 Buy Now' }
+{ id: 'add_to_cart', title: '🛒 Add to Cart' }
+
+// ❌ Avoid - Vague or unclear
+{ id: 'option1', title: 'Click Here' }
+{ id: 'generic', title: 'Continue' }
+```
+
+### 2. Logical Flow Design
+
+```typescript
+// Design conversation flows that make sense
+const conversationFlow = {
+  'welcome' -> 'main_menu' -> 'category' -> 'product' -> 'purchase',
+  'support' -> 'issue_type' -> 'details' -> 'resolution'
+};
+```
+
+### 3. Fallback Handling
+
+```typescript
+const processor = client.createWebhookProcessor({
+  onButtonClick: async (message) => {
+    try {
+      await handleButtonClick(message.interactive.button_id, message.from);
+    } catch (error) {
+      // Always provide fallback
+      await client.sendText(
+        message.from,
+        'Sorry, something went wrong. Please try again or contact support.'
+      );
+    }
+  }
+});
+```
+
+### 4. Response Time
+
+```typescript
+// Acknowledge button clicks immediately
+const processor = client.createWebhookProcessor({
+  onButtonClick: async (message) => {
+    // Immediate acknowledgment
+    await client.sendText(message.from, '⏳ Processing your request...');
+    
+    // Then handle the actual logic
+    await handleButtonLogic(message.interactive.button_id, message.from);
+  }
+});
+```
+
+Interactive messages create engaging, structured conversations that guide users through your services efficiently.

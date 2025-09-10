@@ -1,0 +1,590 @@
+---
+title: "Basic Usage Examples"
+description: "Real-world examples of sending different message types with the WhatsApp Client SDK"
+---
+
+# Basic Usage Examples
+
+This guide provides practical examples of using the WhatsApp Client SDK for common messaging scenarios.
+
+## Setup
+
+First, initialize the client:
+
+```typescript
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+});
+
+const recipientNumber = '+1234567890'; // Replace with actual number
+```
+
+## Text Messages
+
+### Simple Text Message
+
+```typescript
+async function sendWelcomeMessage() {
+  const response = await client.sendText(
+    recipientNumber,
+    '👋 Welcome to our service! We\'re excited to help you get started.'
+  );
+  
+  console.log('Message sent:', response.messages[0].id);
+}
+```
+
+### Text with URL Preview
+
+```typescript
+async function sendNewsUpdate() {
+  await client.sendText(
+    recipientNumber,
+    '📰 Breaking News: New features announced!\n\n' +
+    'Read the full announcement on our blog:\n' +
+    'https://blog.company.com/new-features-2024',
+    { previewUrl: true }
+  );
+}
+```
+
+### Formatted Status Update
+
+```typescript
+async function sendOrderStatus() {
+  const orderDetails = `
+📦 Order Status Update
+
+Order #: 12345
+Status: Shipped 🚚
+Tracking: ABC123XYZ
+
+Expected Delivery:
+📅 March 15, 2024
+🕐 Between 2:00 PM - 6:00 PM
+
+Track your package:
+https://tracking.example.com/ABC123XYZ
+`.trim();
+
+  await client.sendText(recipientNumber, orderDetails, { previewUrl: true });
+}
+```
+
+## Interactive Messages
+
+### Quick Action Buttons
+
+```typescript
+async function sendSupportMenu() {
+  await client.sendButtons(
+    recipientNumber,
+    'How can we help you today?',
+    [
+      { id: 'billing', title: '💳 Billing' },
+      { id: 'technical', title: '🔧 Technical' },
+      { id: 'general', title: '💬 General' }
+    ],
+    {
+      header: { type: 'text', text: '🆘 Customer Support' },
+      footer: 'Our team is here to help!'
+    }
+  );
+}
+```
+
+### Product Catalog List
+
+```typescript
+async function sendProductCatalog() {
+  await client.sendList(
+    recipientNumber,
+    'Browse our product categories:',
+    'View Products',
+    [
+      {
+        title: 'Electronics',
+        rows: [
+          { 
+            id: 'smartphones', 
+            title: '📱 Smartphones', 
+            description: 'Latest models available' 
+          },
+          { 
+            id: 'laptops', 
+            title: '💻 Laptops', 
+            description: 'High-performance devices' 
+          },
+          { 
+            id: 'accessories', 
+            title: '🎧 Accessories', 
+            description: 'Cables, chargers, cases' 
+          }
+        ]
+      },
+      {
+        title: 'Home & Garden',
+        rows: [
+          { 
+            id: 'furniture', 
+            title: '🪑 Furniture', 
+            description: 'Modern designs' 
+          },
+          { 
+            id: 'appliances', 
+            title: '🏠 Appliances', 
+            description: 'Energy efficient' 
+          }
+        ]
+      }
+    ]
+  );
+}
+```
+
+## Media Messages
+
+### Image with Caption
+
+```typescript
+async function sendProductImage() {
+  await client.sendImage(
+    recipientNumber,
+    {
+      link: 'https://example.com/products/smartphone.jpg',
+      caption: '📱 iPhone 15 Pro - Now Available!\n\n' +
+               '💰 Starting at $999\n' +
+               '🎁 Free shipping on orders over $50\n\n' +
+               'Order now: https://shop.example.com/iphone15'
+    }
+  );
+}
+```
+
+### Document Sharing
+
+```typescript
+async function sendInvoice() {
+  await client.sendDocument(
+    recipientNumber,
+    {
+      link: 'https://billing.example.com/invoices/INV-001.pdf',
+      filename: 'Invoice-March-2024.pdf',
+      caption: '📄 Your invoice for March 2024 is ready.\n\n' +
+               'Payment due: March 31, 2024\n' +
+               'Questions? Reply to this message.'
+    }
+  );
+}
+```
+
+### Video Tutorial
+
+```typescript
+async function sendVideoTutorial() {
+  await client.sendVideo(
+    recipientNumber,
+    {
+      link: 'https://videos.example.com/tutorials/getting-started.mp4',
+      caption: '🎥 Getting Started Tutorial\n\n' +
+               'Learn how to use our platform in just 5 minutes!\n' +
+               'More tutorials: https://help.example.com/videos'
+    }
+  );
+}
+```
+
+## Location Sharing
+
+```typescript
+async function sendStoreLocation() {
+  await client.sendLocation(
+    recipientNumber,
+    40.7128,  // Latitude
+    -74.0060, // Longitude
+    {
+      name: 'TechStore - Manhattan',
+      address: '123 Broadway, New York, NY 10001'
+    }
+  );
+  
+  // Follow up with store info
+  await client.sendText(
+    recipientNumber,
+    '📍 Visit our Manhattan store!\n\n' +
+    '🕐 Hours: Mon-Sat 9AM-8PM, Sun 11AM-6PM\n' +
+    '📞 Phone: (555) 123-4567\n' +
+    '🅿️ Free parking available\n\n' +
+    'Need directions? Use the location above in your maps app.'
+  );
+}
+```
+
+## Contact Sharing
+
+```typescript
+async function shareTeamContact() {
+  await client.sendContacts(
+    recipientNumber,
+    [
+      {
+        name: {
+          formatted_name: 'Sarah Johnson - Account Manager',
+          first_name: 'Sarah',
+          last_name: 'Johnson'
+        },
+        phones: [
+          {
+            phone: '+1555-123-4567',
+            type: 'WORK'
+          }
+        ],
+        emails: [
+          {
+            email: 'sarah.johnson@company.com',
+            type: 'WORK'
+          }
+        ],
+        org: {
+          company: 'TechSolutions Inc.',
+          department: 'Customer Success',
+          title: 'Senior Account Manager'
+        },
+        urls: [
+          {
+            url: 'https://linkedin.com/in/sarahjohnson',
+            type: 'WORK'
+          }
+        ]
+      }
+    ]
+  );
+}
+```
+
+## File Upload and Send
+
+```typescript
+import * as fs from 'fs';
+
+async function uploadAndSendDocument() {
+  try {
+    // Read file from disk
+    const fileBuffer = fs.readFileSync('./documents/product-catalog.pdf');
+    
+    // Upload to WhatsApp
+    const mediaResponse = await client.uploadMedia(fileBuffer, 'document');
+    console.log('File uploaded, Media ID:', mediaResponse.id);
+    
+    // Send using the uploaded media ID
+    await client.sendDocument(
+      recipientNumber,
+      {
+        id: mediaResponse.id,
+        filename: 'Product-Catalog-2024.pdf',
+        caption: '📋 Our complete product catalog for 2024\n\n' +
+                 'Browse through our latest offerings and find the perfect solution for your needs!'
+      }
+    );
+    
+    console.log('Document sent successfully!');
+    
+  } catch (error) {
+    console.error('Error uploading/sending document:', error);
+  }
+}
+```
+
+## Template Messages
+
+```typescript
+async function sendAppointmentReminder() {
+  await client.sendTemplate(
+    recipientNumber,
+    'appointment_reminder', // Template name (must be approved)
+    'en_US',               // Language code
+    [
+      {
+        type: 'header',
+        parameters: [
+          { type: 'text', text: 'Dr. Smith' }
+        ]
+      },
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: 'John Doe' },
+          { type: 'text', text: 'March 15, 2024' },
+          { type: 'text', text: '2:30 PM' }
+        ]
+      }
+    ]
+  );
+}
+```
+
+## Error Handling Examples
+
+```typescript
+import { 
+  WhatsAppApiError, 
+  MessageValidationError, 
+  RateLimitError 
+} from 'whatsapp-client-sdk';
+
+async function sendMessageWithErrorHandling() {
+  try {
+    const response = await client.sendText(
+      recipientNumber,
+      'Hello! This is a test message.'
+    );
+    
+    console.log('✅ Message sent successfully:', response.messages[0].id);
+    
+  } catch (error) {
+    if (error instanceof MessageValidationError) {
+      console.error('❌ Validation Error:', {
+        field: error.field,
+        message: error.message,
+        value: error.value
+      });
+      
+    } else if (error instanceof WhatsAppApiError) {
+      console.error('❌ WhatsApp API Error:', {
+        status: error.status,
+        code: error.code,
+        details: error.details,
+        traceId: error.fbtrace_id
+      });
+      
+      // Handle specific error codes
+      switch (error.code) {
+        case 131:
+          console.log('📵 Number is not on WhatsApp');
+          break;
+        case 132:
+          console.log('📬 Message could not be delivered');
+          break;
+        case 133:
+          console.log('🚫 Message content not allowed');
+          break;
+      }
+      
+    } else if (error instanceof RateLimitError) {
+      console.error(`⏰ Rate limited. Retry after ${error.retryAfter} seconds`);
+      
+      // Wait and retry
+      setTimeout(async () => {
+        console.log('🔄 Retrying message...');
+        await sendMessageWithErrorHandling();
+      }, error.retryAfter * 1000);
+      
+    } else {
+      console.error('💥 Unexpected error:', error);
+    }
+  }
+}
+```
+
+## Batch Operations
+
+### Send to Multiple Recipients
+
+```typescript
+async function sendBulkAnnouncement() {
+  const recipients = ['+1111111111', '+2222222222', '+3333333333'];
+  const message = '🎉 Big announcement! Our new product is now available. Check it out!';
+  
+  const results = await Promise.allSettled(
+    recipients.map(async (number) => {
+      try {
+        const response = await client.sendText(number, message);
+        return { number, success: true, messageId: response.messages[0].id };
+      } catch (error) {
+        return { number, success: false, error: error.message };
+      }
+    })
+  );
+  
+  // Process results
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      if (result.value.success) {
+        console.log(`✅ ${result.value.number}: Message sent (${result.value.messageId})`);
+      } else {
+        console.log(`❌ ${result.value.number}: Failed - ${result.value.error}`);
+      }
+    } else {
+      console.log(`💥 ${recipients[index]}: Promise rejected - ${result.reason}`);
+    }
+  });
+}
+```
+
+### Upload Once, Send to Many
+
+```typescript
+async function sendImageToMultipleRecipients() {
+  const recipients = ['+1111111111', '+2222222222', '+3333333333'];
+  
+  // Upload image once
+  const imageBuffer = fs.readFileSync('./images/promotion.jpg');
+  const mediaResponse = await client.uploadMedia(imageBuffer, 'image');
+  
+  console.log('📤 Image uploaded, Media ID:', mediaResponse.id);
+  
+  // Send to all recipients using the same media ID
+  const sendPromises = recipients.map(number =>
+    client.sendImage(number, {
+      id: mediaResponse.id,
+      caption: '🎯 Special promotion just for you!\n\n' +
+               'Limited time offer - 50% off all products\n' +
+               'Use code: SAVE50\n\n' +
+               'Shop now: https://shop.example.com'
+    })
+  );
+  
+  const results = await Promise.allSettled(sendPromises);
+  console.log(`📊 Sent to ${results.filter(r => r.status === 'fulfilled').length}/${recipients.length} recipients`);
+}
+```
+
+## Business Use Cases
+
+### Order Confirmation Flow
+
+```typescript
+async function sendOrderConfirmation(orderData: any) {
+  // 1. Send confirmation text
+  await client.sendText(
+    orderData.customerPhone,
+    `🎉 Order Confirmed!\n\n` +
+    `Order #: ${orderData.id}\n` +
+    `Total: $${orderData.total}\n` +
+    `Items: ${orderData.itemCount}\n\n` +
+    `We'll send tracking info once your order ships.`
+  );
+  
+  // 2. Send invoice document
+  await client.sendDocument(
+    orderData.customerPhone,
+    {
+      link: orderData.invoiceUrl,
+      filename: `Invoice-${orderData.id}.pdf`,
+      caption: '📄 Your order invoice is attached above.'
+    }
+  );
+  
+  // 3. Send action buttons
+  await client.sendButtons(
+    orderData.customerPhone,
+    'What would you like to do next?',
+    [
+      { id: 'track_order', title: '📦 Track Order' },
+      { id: 'modify_order', title: '✏️ Modify Order' },
+      { id: 'contact_support', title: '💬 Contact Support' }
+    ],
+    {
+      header: { type: 'text', text: `Order #${orderData.id}` },
+      footer: 'We\'re here to help!'
+    }
+  );
+}
+
+// Usage
+await sendOrderConfirmation({
+  id: 'ORD-12345',
+  customerPhone: '+1234567890',
+  total: '99.99',
+  itemCount: 3,
+  invoiceUrl: 'https://billing.example.com/invoices/ORD-12345.pdf'
+});
+```
+
+### Customer Support Workflow
+
+```typescript
+async function initiateSupport(customerPhone: string, issue: string) {
+  // 1. Acknowledge the issue
+  await client.sendText(
+    customerPhone,
+    `🆘 Support Request Received\n\n` +
+    `Issue: ${issue}\n` +
+    `Ticket #: SUP-${Date.now()}\n\n` +
+    `Our team will respond within 24 hours.`
+  );
+  
+  // 2. Provide self-service options
+  await client.sendList(
+    customerPhone,
+    'While you wait, try these helpful resources:',
+    'Self-Service Options',
+    [
+      {
+        title: 'Common Solutions',
+        rows: [
+          { id: 'faq', title: '❓ FAQ', description: 'Frequently asked questions' },
+          { id: 'troubleshoot', title: '🔧 Troubleshooting', description: 'Step-by-step guides' },
+          { id: 'video_tutorials', title: '🎥 Video Tutorials', description: 'Visual learning resources' }
+        ]
+      },
+      {
+        title: 'Account Help',
+        rows: [
+          { id: 'reset_password', title: '🔑 Reset Password', description: 'Account access issues' },
+          { id: 'billing_help', title: '💳 Billing Help', description: 'Payment and invoices' }
+        ]
+      }
+    ]
+  );
+  
+  // 3. Share contact information
+  await client.sendContacts(customerPhone, [
+    {
+      name: { formatted_name: 'Customer Support Team' },
+      phones: [{ phone: '+1-800-SUPPORT', type: 'WORK' }],
+      emails: [{ email: 'support@company.com', type: 'WORK' }],
+      org: {
+        company: 'TechSolutions Inc.',
+        department: 'Customer Support'
+      }
+    }
+  ]);
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Framework Integration"
+    icon="layers"
+    href="/examples/framework-integration"
+  >
+    Learn how to integrate with Express, Next.js, NestJS, and more
+  </Card>
+  <Card
+    title="Webhook Handling"
+    icon="webhook"
+    href="/webhooks/overview"
+  >
+    Handle incoming messages and user interactions
+  </Card>
+  <Card
+    title="Production Deployment"
+    icon="rocket"
+    href="/guides/production-deployment"
+  >
+    Deploy your WhatsApp integration to production
+  </Card>
+  <Card
+    title="Best Practices"
+    icon="lightbulb"
+    href="/guides/best-practices"
+  >
+    Learn production-ready patterns and strategies
+  </Card>
+</CardGroup>

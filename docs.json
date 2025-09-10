@@ -1,68 +1,90 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "WhatsApp SDK Docs",
+  "site": "WhatsApp SDK Documentation",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#25D366",
+    "light": "#4ADE80",
+    "dark": "#16A34A"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://wazap.dev/favicon.svg",
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Getting Started",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Introduction",
             "pages": [
               "index",
+              "installation",
               "quickstart",
-              "development"
-            ]
-          },
-          {
-            "group": "Customization",
-            "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
-          {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "configuration"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Message Types",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "All Message Types",
             "pages": [
-              "api-reference/introduction"
+              "messages/overview",
+              "messages/text",
+              "messages/media",
+              "messages/interactive",
+              "messages/template",
+              "messages/location",
+              "messages/contacts",
+              "messages/stickers"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Webhook System",
+        "groups": [
+          {
+            "group": "Webhooks",
+            "pages": [
+              "webhooks/overview"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core Components",
+            "pages": [
+              "api-reference/client"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "System Components",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/validation",
+              "api-reference/helpers"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Examples & Guides",
+        "groups": [
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/basic-usage"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/best-practices"
             ]
           }
         ]
@@ -71,39 +93,35 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "GitHub",
+          "href": "https://github.com/joseandrescolmenares/whatsapp-sdk",
+          "icon": "github"
         },
         {
-          "anchor": "Community",
-          "href": "https://mintlify.com/community",
-          "icon": "slack"
+          "anchor": "NPM",
+          "href": "https://www.npmjs.com/package/whatsapp-client-sdk",
+          "icon": "npm"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Website",
+          "href": "https://wazap.dev",
+          "icon": "globe"
         }
       ]
     }
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "/logo/whatsapp-light.svg",
+    "dark": "/logo/whatsapp-dark.svg"
   },
+
   "navbar": {
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "mailto:joseandrescolmenares02@gmail.com"
       }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
+    ]
   },
   "contextual": {
     "options": [
@@ -119,9 +137,8 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/joseandrescolmenares/whatsapp-sdk",
+      "linkedin": "https://linkedin.com/in/joseandrescolmenares"
     }
   }
 }

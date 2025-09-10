@@ -1,0 +1,656 @@
+---
+title: "Type System"
+description: "Explore the comprehensive TypeScript type definitions in the WhatsApp Client SDK"
+---
+
+# Type System
+
+The WhatsApp Client SDK provides comprehensive TypeScript definitions with 200+ interfaces and enums, ensuring type safety and excellent developer experience.
+
+## Core Type Categories
+
+### 1. Message Types
+
+#### Message Type Enumeration
+
+```typescript
+enum WhatsAppMessageType {
+  AUDIO = 'audio',        // Audio messages
+  TEXT = 'text',          // Text messages
+  INTERACTIVE = 'interactive', // Buttons and lists
+  TEMPLATE = 'template',  // Approved templates
+  BUTTON = 'button',      // Button responses
+  FLOW = 'nfm_reply',     // Flow responses
+  IMAGE = 'image',        // Image messages
+  VIDEO = 'video',        // Video messages
+  DOCUMENT = 'document',  // Document messages
+  LOCATION = 'location',  // Location messages
+  CONTACTS = 'contacts',  // Contact cards
+  STICKER = 'sticker'     // Sticker messages
+}
+```
+
+#### Base Message Interface
+
+```typescript
+interface OutgoingMessage {
+  type: WhatsAppMessageType;
+  to: string;
+  context?: MessageContext;
+}
+
+interface MessageContext {
+  message_id: string; // ID of message being replied to
+}
+```
+
+### 2. Specific Message Type Interfaces
+
+#### Text Messages
+
+```typescript
+interface TextMessage extends OutgoingMessage {
+  type: WhatsAppMessageType.TEXT;
+  text: {
+    body: string;           // Message content (max 4096 chars)
+    preview_url?: boolean;  // Enable URL preview
+  };
+}
+
+interface TextOptions {
+  previewUrl?: boolean;
+  replyToMessageId?: string;
+}
+```
+
+#### Media Messages
+
+```typescript
+// Base media interface
+interface MediaBase {
+  id?: string;        // Media ID (from upload)
+  link?: string;      // Direct URL to media
+  caption?: string;   // Optional caption
+}
+
+// Image messages
+interface ImageMedia extends MediaBase {
+  caption?: string;   // Max 1024 characters
+}
+
+interface ImageMessage extends OutgoingMessage {
+  type: WhatsAppMessageType.IMAGE;
+  image: ImageMedia;
+}
+
+// Video messages
+interface VideoMedia extends MediaBase {
+  caption?: string;   // Max 1024 characters
+}
+
+// Audio messages
+interface AudioMedia {
+  id?: string;
+  link?: string;
+  // Note: Audio messages don't support captions
+}
+
+// Document messages
+interface DocumentMedia extends MediaBase {
+  filename?: string;  // Display name for the file
+}
+```
+
+#### Interactive Messages
+
+```typescript
+// Button messages
+interface ButtonMessage extends OutgoingMessage {
+  type: WhatsAppMessageType.INTERACTIVE;
+  interactive: {
+    type: 'button';
+    header?: InteractiveHeader;
+    body: {
+      text: string;     // Main message text
+    };
+    footer?: {
+      text: string;     // Footer text
+    };
+    action: {
+      buttons: Button[]; // Max 3 buttons
+    };
+  };
+}
+
+interface Button {
+  type: 'reply';
+  reply: {
+    id: string;         // Button ID (max 256 chars)
+    title: string;      // Button text (max 20 chars)
+  };
+}
+
+// List messages
+interface ListMessage extends OutgoingMessage {
+  type: WhatsAppMessageType.INTERACTIVE;
+  interactive: {
+    type: 'list';
+    header?: InteractiveHeader;
+    body: {
+      text: string;
+    };
+    footer?: {
+      text: string;
+    };
+    action: {
+      button: string;   // Button text to open list
+      sections: ListSection[];
+    };
+  };
+}
+
+interface ListSection {
+  title: string;        // Section title (max 24 chars)
+  rows: ListRow[];      // Max 10 rows per section
+}
+
+interface ListRow {
+  id: string;           // Row ID (max 200 chars)
+  title: string;        // Row title (max 24 chars)
+  description?: string; // Row description (max 72 chars)
+}
+```
+
+#### Template Messages
+
+```typescript
+interface TemplateMessage extends OutgoingMessage {
+  type: WhatsAppMessageType.TEMPLATE;
+  template: {
+    name: string;           // Template name
+    language: {
+      code: string;         // Language code (e.g., 'en_US')
+    };
+    components?: TemplateComponent[];
+  };
+}
+
+interface TemplateComponent {
+  type: 'header' | 'body' | 'button';
+  parameters?: TemplateParameter[];
+}
+
+interface TemplateParameter {
+  type: 'text' | 'currency' | 'date_time' | 'image' | 'document' | 'video';
+  text?: string;
+  currency?: CurrencyParameter;
+  date_time?: DateTimeParameter;
+  image?: MediaParameter;
+  document?: MediaParameter;
+  video?: MediaParameter;
+}
+```
+
+#### Location Messages
+
+```typescript
+interface LocationMessage extends OutgoingMessage {
+  type: WhatsAppMessageType.LOCATION;
+  location: {
+    latitude: number;     // Latitude coordinate
+    longitude: number;    // Longitude coordinate
+    name?: string;        // Location name
+    address?: string;     // Location address
+  };
+}
+```
+
+#### Contact Messages
+
+```typescript
+interface ContactMessage extends OutgoingMessage {
+  type: WhatsAppMessageType.CONTACTS;
+  contacts: Contact[];
+}
+
+interface Contact {
+  addresses?: Address[];
+  birthday?: string;      // YYYY-MM-DD format
+  emails?: Email[];
+  name: Name;
+  org?: Organization;
+  phones?: Phone[];
+  urls?: Url[];
+}
+
+interface Name {
+  formatted_name: string;  // Full name
+  first_name?: string;
+  last_name?: string;
+  middle_name?: string;
+  suffix?: string;
+  prefix?: string;
+}
+
+interface Phone {
+  phone: string;          // Phone number
+  wa_id?: string;         // WhatsApp ID
+  type?: 'CELL' | 'MAIN' | 'IPHONE' | 'HOME' | 'WORK';
+}
+
+interface Email {
+  email: string;
+  type?: 'HOME' | 'WORK';
+}
+
+interface Address {
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  country_code?: string;
+  type?: 'HOME' | 'WORK';
+}
+```
+
+### 3. Incoming Message Types
+
+#### Processed Incoming Messages
+
+```typescript
+interface ProcessedIncomingMessage {
+  id: string;               // Message ID
+  from: string;             // Sender phone number
+  timestamp: string;        // ISO timestamp
+  type: WhatsAppMessageType;
+  
+  // Type-specific content
+  text?: string;
+  media?: MediaInfo;
+  location?: LocationInfo;
+  interactive?: InteractiveInfo;
+  contacts?: Contact[];
+}
+
+interface MediaInfo {
+  id: string;               // Media ID
+  mime_type: string;        // MIME type
+  sha256: string;           // File hash
+  size?: number;            // File size in bytes
+  filename?: string;        // Original filename
+  caption?: string;         // Media caption
+}
+
+interface LocationInfo {
+  latitude: number;
+  longitude: number;
+  name?: string;
+  address?: string;
+}
+
+interface InteractiveInfo {
+  type: 'button_reply' | 'list_reply';
+  button_id?: string;       // For button responses
+  list_id?: string;         // For list responses
+  title?: string;           // Button/list item title
+  description?: string;     // List item description
+}
+```
+
+### 4. Configuration Types
+
+#### Client Configuration
+
+```typescript
+interface WhatsAppConfig {
+  // Required
+  accessToken: string;           // Meta access token
+  phoneNumberId: string;         // Phone number ID
+  
+  // Optional API settings
+  baseUrl?: string;             // Default: 'https://graph.facebook.com'
+  apiVersion?: string;          // Default: 'v23.0'
+  timeout?: number;             // Default: 30000ms
+  
+  // Optional webhook settings
+  webhookVerifyToken?: string;  // Webhook verification token
+  businessId?: string;          // Business account ID
+}
+```
+
+#### Message Options
+
+```typescript
+interface MessageOptions {
+  replyToMessageId?: string;    // Reply to specific message
+}
+
+interface MediaOptions extends MessageOptions {
+  caption?: string;             // Media caption
+}
+
+interface InteractiveOptions extends MessageOptions {
+  header?: InteractiveHeader;   // Message header
+  footer?: string;              // Message footer
+}
+```
+
+### 5. Response Types
+
+#### API Responses
+
+```typescript
+interface MessageResponse {
+  messaging_product: 'whatsapp';
+  contacts: Contact[];
+  messages: SentMessage[];
+}
+
+interface SentMessage {
+  id: string;                   // Message ID
+  message_status?: 'accepted' | 'queued' | 'sent' | 'delivered' | 'read';
+}
+
+interface MediaResponse {
+  id: string;                   // Media ID for reuse
+}
+
+interface MediaInfo {
+  url: string;                  // Download URL (temporary)
+  mime_type: string;            // File MIME type
+  sha256: string;               // File hash
+  file_size: number;            // Size in bytes
+  id: string;                   // Media ID
+}
+```
+
+### 6. Error Types
+
+#### Error Interfaces
+
+```typescript
+interface ApiErrorDetails {
+  message: string;
+  type: string;
+  code: number;
+  error_subcode?: number;
+  fbtrace_id?: string;
+  error_user_title?: string;
+  error_user_msg?: string;
+}
+
+interface ValidationErrorContext {
+  field: string;                // Field that failed validation
+  value?: any;                  // Invalid value
+  constraint?: string;          // Validation rule that failed
+}
+```
+
+### 7. Webhook Types
+
+#### Webhook Handlers
+
+```typescript
+interface WebhookHandlers {
+  onTextMessage?: (message: ProcessedIncomingMessage & { text: string }) => Promise<void>;
+  onImageMessage?: (message: ProcessedIncomingMessage & { media: MediaInfo }) => Promise<void>;
+  onVideoMessage?: (message: ProcessedIncomingMessage & { media: MediaInfo }) => Promise<void>;
+  onAudioMessage?: (message: ProcessedIncomingMessage & { media: MediaInfo }) => Promise<void>;
+  onDocumentMessage?: (message: ProcessedIncomingMessage & { media: MediaInfo }) => Promise<void>;
+  onLocationMessage?: (message: ProcessedIncomingMessage & { location: LocationInfo }) => Promise<void>;
+  onContactMessage?: (message: ProcessedIncomingMessage & { contacts: Contact[] }) => Promise<void>;
+  onStickerMessage?: (message: ProcessedIncomingMessage & { media: MediaInfo }) => Promise<void>;
+  onButtonClick?: (message: ProcessedIncomingMessage & { interactive: InteractiveInfo }) => Promise<void>;
+  onListSelect?: (message: ProcessedIncomingMessage & { interactive: InteractiveInfo }) => Promise<void>;
+  onUnknownMessage?: (message: ProcessedIncomingMessage) => Promise<void>;
+  onError?: (error: Error, message?: ProcessedIncomingMessage) => Promise<void>;
+}
+
+interface WebhookProcessResult {
+  status: number;               // HTTP status code
+  response: string;             // Response body
+  messages?: ProcessedIncomingMessage[];
+}
+```
+
+### 8. Utility Types
+
+#### Type Guards
+
+```typescript
+// Message type guards
+export function isTextMessage(message: OutgoingMessage): message is TextMessage {
+  return message.type === WhatsAppMessageType.TEXT;
+}
+
+export function isImageMessage(message: OutgoingMessage): message is ImageMessage {
+  return message.type === WhatsAppMessageType.IMAGE;
+}
+
+export function isInteractiveMessage(message: OutgoingMessage): message is InteractiveMessage {
+  return message.type === WhatsAppMessageType.INTERACTIVE;
+}
+
+// Incoming message type guards
+export function hasMediaContent(message: ProcessedIncomingMessage): message is ProcessedIncomingMessage & { media: MediaInfo } {
+  return message.media !== undefined;
+}
+
+export function hasInteractiveContent(message: ProcessedIncomingMessage): message is ProcessedIncomingMessage & { interactive: InteractiveInfo } {
+  return message.interactive !== undefined;
+}
+```
+
+#### Utility Type Definitions
+
+```typescript
+// Union types for convenience
+type MediaMessage = ImageMessage | VideoMessage | AudioMessage | DocumentMessage;
+type InteractiveMessage = ButtonMessage | ListMessage;
+type AllMessageTypes = TextMessage | MediaMessage | InteractiveMessage | TemplateMessage | LocationMessage | ContactMessage | StickerMessage;
+
+// Extract types
+type MessageType<T extends OutgoingMessage> = T['type'];
+type MessageContent<T extends OutgoingMessage> = Omit<T, 'type' | 'to' | 'context'>;
+
+// Conditional types
+type MessageByType<T extends WhatsAppMessageType> = 
+  T extends WhatsAppMessageType.TEXT ? TextMessage :
+  T extends WhatsAppMessageType.IMAGE ? ImageMessage :
+  T extends WhatsAppMessageType.VIDEO ? VideoMessage :
+  T extends WhatsAppMessageType.AUDIO ? AudioMessage :
+  T extends WhatsAppMessageType.DOCUMENT ? DocumentMessage :
+  T extends WhatsAppMessageType.INTERACTIVE ? InteractiveMessage :
+  T extends WhatsAppMessageType.TEMPLATE ? TemplateMessage :
+  T extends WhatsAppMessageType.LOCATION ? LocationMessage :
+  T extends WhatsAppMessageType.CONTACTS ? ContactMessage :
+  T extends WhatsAppMessageType.STICKER ? StickerMessage :
+  never;
+```
+
+## Type Usage Examples
+
+### Creating Type-Safe Messages
+
+```typescript
+import { WhatsAppClient, TextMessage, WhatsAppMessageType } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient(config);
+
+// Type-safe text message
+const textMessage: TextMessage = {
+  type: WhatsAppMessageType.TEXT,
+  to: '+1234567890',
+  text: {
+    body: 'Hello, TypeScript!',
+    preview_url: true
+  }
+};
+
+// Type-safe button message
+const buttonMessage: ButtonMessage = {
+  type: WhatsAppMessageType.INTERACTIVE,
+  to: '+1234567890',
+  interactive: {
+    type: 'button',
+    body: { text: 'Choose an option:' },
+    action: {
+      buttons: [
+        {
+          type: 'reply',
+          reply: { id: 'option1', title: 'Option 1' }
+        },
+        {
+          type: 'reply',
+          reply: { id: 'option2', title: 'Option 2' }
+        }
+      ]
+    }
+  }
+};
+```
+
+### Type-Safe Webhook Handlers
+
+```typescript
+import { WebhookHandlers, ProcessedIncomingMessage } from 'whatsapp-client-sdk';
+
+const handlers: WebhookHandlers = {
+  // TypeScript ensures the message parameter has the correct type
+  onTextMessage: async (message) => {
+    // message.text is guaranteed to exist and be a string
+    console.log('Received text:', message.text);
+    
+    // Type-safe response
+    await client.sendText(message.from, `Echo: ${message.text}`);
+  },
+  
+  onImageMessage: async (message) => {
+    // message.media is guaranteed to exist and have MediaInfo type
+    console.log('Received image:', message.media.id);
+    
+    // Download media with type safety
+    const buffer = await client.downloadMedia(message.media.id);
+    console.log(`Downloaded ${buffer.length} bytes`);
+  },
+  
+  onButtonClick: async (message) => {
+    // message.interactive is guaranteed to exist
+    const buttonId = message.interactive.button_id;
+    
+    if (buttonId === 'option1') {
+      await client.sendText(message.from, 'You selected Option 1');
+    }
+  }
+};
+```
+
+### Generic Type Usage
+
+```typescript
+// Generic function for sending any message type
+async function sendMessage<T extends OutgoingMessage>(
+  client: WhatsAppClient,
+  message: T
+): Promise<MessageResponse> {
+  switch (message.type) {
+    case WhatsAppMessageType.TEXT:
+      return client.sendText(message.to, (message as TextMessage).text.body);
+    case WhatsAppMessageType.IMAGE:
+      return client.sendImage(message.to, (message as ImageMessage).image);
+    // ... other cases
+    default:
+      throw new Error(`Unsupported message type: ${message.type}`);
+  }
+}
+
+// Usage with type inference
+const textMsg: TextMessage = { /* ... */ };
+const response = await sendMessage(client, textMsg); // TypeScript infers the types
+```
+
+## Type Development Best Practices
+
+### 1. Use Type Guards
+
+```typescript
+function processIncomingMessage(message: ProcessedIncomingMessage) {
+  if (hasMediaContent(message)) {
+    // TypeScript knows message.media exists
+    console.log('Media type:', message.media.mime_type);
+  }
+  
+  if (hasInteractiveContent(message)) {
+    // TypeScript knows message.interactive exists
+    console.log('Interaction type:', message.interactive.type);
+  }
+}
+```
+
+### 2. Leverage Union Types
+
+```typescript
+type SupportedMessageTypes = TextMessage | ImageMessage | ButtonMessage;
+
+function validateMessage(message: SupportedMessageTypes): boolean {
+  switch (message.type) {
+    case WhatsAppMessageType.TEXT:
+      return message.text.body.length > 0;
+    case WhatsAppMessageType.IMAGE:
+      return !!message.image.id || !!message.image.link;
+    case WhatsAppMessageType.INTERACTIVE:
+      return message.interactive.action.buttons.length > 0;
+    default:
+      // TypeScript ensures all cases are handled
+      return false;
+  }
+}
+```
+
+### 3. Use Strict Type Checking
+
+```typescript
+// Enable strict TypeScript settings in tsconfig.json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Error Handling"
+    icon="shield"
+    href="/core-concepts/errors"
+  >
+    Learn about specialized error types and handling
+  </Card>
+  <Card
+    title="Validation System"
+    icon="check-double"
+    href="/core-concepts/validation"
+  >
+    Understand input validation and type checking
+  </Card>
+  <Card
+    title="Message Types"
+    icon="message"
+    href="/messages/overview"
+  >
+    Explore all supported message types with examples
+  </Card>
+  <Card
+    title="API Reference"
+    icon="book-open"
+    href="/api-reference/types"
+  >
+    Complete type definitions reference
+  </Card>
+</CardGroup>

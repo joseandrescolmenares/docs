@@ -1,0 +1,485 @@
+---
+title: Utility Functions & Helpers
+description: Collection of utility functions and helper methods for common operations
+---
+
+# Utility Functions & Helpers
+
+The SDK includes several utility functions to simplify common operations like phone number formatting, retry logic, text processing, and more.
+
+## Phone Number Utilities
+
+### formatPhoneNumber()
+
+Formats phone numbers to international format with + prefix.
+
+```typescript
+function formatPhoneNumber(phoneNumber: string): string
+```
+
+**Parameters:**
+- `phoneNumber` - Phone number string to format
+
+**Returns:**
+- Formatted phone number with + prefix
+
+**Examples:**
+
+```typescript
+import { formatPhoneNumber } from 'whatsapp-client-sdk';
+
+// Add missing + prefix
+formatPhoneNumber('573001234567');   // '+573001234567'
+formatPhoneNumber('1234567890');     // '+1234567890'
+
+// Already formatted numbers remain unchanged
+formatPhoneNumber('+573001234567');  // '+573001234567'
+```
+
+### validatePhoneNumber()
+
+Validates international phone number format.
+
+```typescript
+import { validatePhoneNumber } from 'whatsapp-client-sdk';
+
+const isValid = validatePhoneNumber('+573001234567'); // true
+const isInvalid = validatePhoneNumber('123');         // false
+```
+
+## Retry Logic & Error Handling
+
+### withRetry()
+
+Executes a function with automatic retry logic and exponential backoff.
+
+```typescript
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: RetryOptions = {}
+): Promise<T>
+```
+
+**Parameters:**
+- `fn` - Async function to execute
+- `options` - Retry configuration options
+
+**Options:**
+```typescript
+interface RetryOptions {
+  maxRetries?: number;     // Default: 3
+  initialDelay?: number;   // Default: 1000ms
+  backoffFactor?: number;  // Default: 2
+  maxDelay?: number;       // Default: 30000ms
+}
+```
+
+**Examples:**
+
+```typescript
+import { withRetry } from 'whatsapp-client-sdk';
+
+// Basic retry with defaults (3 attempts, 1s initial delay)
+const result = await withRetry(async () => {
+  const response = await fetch('https://api.example.com/data');
+  if (!response.ok) throw new Error('API request failed');
+  return response.json();
+});
+
+// Custom retry configuration
+const data = await withRetry(
+  () => client.sendText('+573001234567', 'Hello'),
+  {
+    maxRetries: 5,        // Try up to 5 times
+    initialDelay: 2000,   // Start with 2 second delay
+    backoffFactor: 1.5,   // Increase delay by 1.5x each retry
+    maxDelay: 10000       // Max 10 second delay
+  }
+);
+
+// Retry pattern: 2s → 3s → 4.5s → 6.75s → 10s
+```
+
+### delay()
+
+Promise-based delay function for creating pauses.
+
+```typescript
+async function delay(ms: number): Promise<void>
+```
+
+**Parameters:**
+- `ms` - Milliseconds to delay
+
+**Examples:**
+
+```typescript
+import { delay } from 'whatsapp-client-sdk';
+
+// Wait 1 second
+await delay(1000);
+
+// Rate limiting example
+for (const message of messages) {
+  await client.sendText(phone, message);
+  await delay(2000); // 2 second pause between messages
+}
+
+// Exponential backoff
+let delayMs = 1000;
+for (let attempt = 1; attempt <= 5; attempt++) {
+  try {
+    await apiCall();
+    break; // Success, exit loop
+  } catch (error) {
+    console.log(`Attempt ${attempt} failed, retrying in ${delayMs}ms`);
+    await delay(delayMs);
+    delayMs *= 2; // Double the delay
+  }
+}
+```
+
+## Text Processing
+
+### truncateText()
+
+Truncates text to specified length with ellipsis.
+
+```typescript
+function truncateText(text: string, maxLength: number): string
+```
+
+**Parameters:**
+- `text` - Text to truncate
+- `maxLength` - Maximum character length
+
+**Examples:**
+
+```typescript
+import { truncateText } from 'whatsapp-client-sdk';
+
+// Basic truncation
+truncateText('This is a very long message that exceeds limits', 20);
+// Result: 'This is a very lo...'
+
+// WhatsApp limits
+const buttonTitle = truncateText(userInput, 20);  // Button titles: 20 chars
+const caption = truncateText(description, 1024);  // Captions: 1024 chars
+const textMessage = truncateText(content, 4096);  // Text messages: 4096 chars
+
+// No truncation needed
+truncateText('Short text', 50); // 'Short text' (unchanged)
+```
+
+### sanitizeText()
+
+Removes control characters and normalizes whitespace.
+
+```typescript
+function sanitizeText(text: string): string
+```
+
+**Parameters:**
+- `text` - Text to sanitize
+
+**Examples:**
+
+```typescript
+import { sanitizeText } from 'whatsapp-client-sdk';
+
+// Remove control characters
+sanitizeText('Text with\nline\tbreaks\rand\x00nulls');
+// Result: 'Text with line breaks and nulls'
+
+// Normalize whitespace
+sanitizeText('  Multiple   spaces   and\n\nlines  ');
+// Result: 'Multiple spaces and lines'
+
+// Clean user input
+const userMessage = sanitizeText(req.body.message);
+await client.sendText(phone, userMessage);
+```
+
+## URL Utilities
+
+### isValidUrl()
+
+Validates URL format and accessibility.
+
+```typescript
+function isValidUrl(url: string): boolean
+```
+
+**Parameters:**
+- `url` - URL string to validate
+
+**Examples:**
+
+```typescript
+import { isValidUrl } from 'whatsapp-client-sdk';
+
+// Valid URLs
+isValidUrl('https://example.com');           // true
+isValidUrl('http://subdomain.example.com');  // true
+isValidUrl('https://example.com/path?q=1');  // true
+
+// Invalid URLs
+isValidUrl('not-a-url');                     // false
+isValidUrl('ftp://example.com');             // false
+isValidUrl('https://');                      // false
+
+// Use in message validation
+const validateImageMessage = (imageUrl: string) => {
+  if (!isValidUrl(imageUrl)) {
+    throw new Error('Invalid image URL');
+  }
+};
+```
+
+## Array Utilities
+
+### chunk()
+
+Splits arrays into smaller chunks for batch processing.
+
+```typescript
+function chunk<T>(array: T[], size: number): T[][]
+```
+
+**Parameters:**
+- `array` - Array to split
+- `size` - Chunk size
+
+**Examples:**
+
+```typescript
+import { chunk } from 'whatsapp-client-sdk';
+
+// Split contact list for batch processing
+const contacts = [/* ... 100 contacts ... */];
+const batches = chunk(contacts, 10); // 10 contacts per batch
+
+// Process in batches to avoid rate limits
+for (const batch of batches) {
+  for (const contact of batch) {
+    await client.sendText(contact.phone, 'Hello!');
+    await delay(100); // Small delay between messages
+  }
+  
+  console.log(`Processed batch of ${batch.length} contacts`);
+  await delay(5000); // Longer delay between batches
+}
+
+// Split large arrays
+const numbers = Array.from({ length: 100 }, (_, i) => i);
+const chunks = chunk(numbers, 25);
+// Result: [[0,1,...,24], [25,26,...,49], [50,51,...,74], [75,76,...,99]]
+```
+
+## JSON Utilities
+
+### safeJsonParse()
+
+Safely parses JSON with fallback values.
+
+```typescript
+function safeJsonParse<T>(json: string, fallback: T): T
+```
+
+**Parameters:**
+- `json` - JSON string to parse
+- `fallback` - Fallback value if parsing fails
+
+**Examples:**
+
+```typescript
+import { safeJsonParse } from 'whatsapp-client-sdk';
+
+// Safe parsing with fallback
+const config = safeJsonParse(process.env.CONFIG, {});
+const numbers = safeJsonParse(userInput, []);
+const settings = safeJsonParse(localStorage.getItem('settings'), { theme: 'light' });
+
+// Parse webhook data safely
+const parseWebhookData = (rawData: string) => {
+  const data = safeJsonParse(rawData, { entry: [] });
+  return data.entry || [];
+};
+```
+
+## Function Utilities
+
+### debounce()
+
+Debounces function execution to prevent rapid repeated calls.
+
+```typescript
+function debounce<T extends (...args: any[]) => any>(
+  func: T, 
+  wait: number
+): (...args: Parameters<T>) => void
+```
+
+**Parameters:**
+- `func` - Function to debounce
+- `wait` - Delay in milliseconds
+
+**Examples:**
+
+```typescript
+import { debounce } from 'whatsapp-client-sdk';
+
+// Debounce message sending to prevent spam
+const debouncedSend = debounce(async (phone: string, message: string) => {
+  await client.sendText(phone, message);
+}, 2000); // 2 second delay
+
+// Multiple rapid calls will only execute once
+debouncedSend('+573001234567', 'Hello'); // Will execute
+debouncedSend('+573001234567', 'Hello'); // Cancelled
+debouncedSend('+573001234567', 'Hello'); // Cancelled
+// Only the last call executes after 2 seconds
+
+// Debounce user input processing
+const processUserInput = debounce(async (input: string) => {
+  const response = await analyzeMessage(input);
+  await client.sendText(userPhone, response);
+}, 1000);
+```
+
+## Usage Examples
+
+### Comprehensive Message Processing
+
+```typescript
+import {
+  validatePhoneNumber,
+  formatPhoneNumber,
+  sanitizeText,
+  truncateText,
+  chunk,
+  withRetry,
+  delay,
+  debounce
+} from 'whatsapp-client-sdk';
+
+class MessageProcessor {
+  private client: WhatsAppClient;
+  
+  // Debounced message sender to prevent spam
+  private debouncedSend = debounce(this.sendMessage.bind(this), 1000);
+  
+  constructor(client: WhatsAppClient) {
+    this.client = client;
+  }
+  
+  async processBulkMessages(contacts: Contact[], message: string) {
+    // Validate and format phone numbers
+    const validContacts = contacts
+      .filter(contact => validatePhoneNumber(contact.phone))
+      .map(contact => ({
+        ...contact,
+        phone: formatPhoneNumber(contact.phone)
+      }));
+    
+    // Sanitize and truncate message
+    const cleanMessage = sanitizeText(message);
+    const finalMessage = truncateText(cleanMessage, 4096);
+    
+    // Process in batches to respect rate limits
+    const batches = chunk(validContacts, 10);
+    
+    for (const batch of batches) {
+      await Promise.all(
+        batch.map(contact => 
+          this.sendMessageWithRetry(contact.phone, finalMessage)
+        )
+      );
+      
+      // Delay between batches
+      await delay(5000);
+    }
+  }
+  
+  private async sendMessageWithRetry(phone: string, message: string) {
+    return withRetry(
+      () => this.client.sendText(phone, message),
+      {
+        maxRetries: 3,
+        initialDelay: 1000,
+        backoffFactor: 2
+      }
+    );
+  }
+  
+  private async sendMessage(phone: string, message: string) {
+    // Implementation here
+  }
+}
+```
+
+### Input Validation and Sanitization
+
+```typescript
+import { 
+  validatePhoneNumber, 
+  formatPhoneNumber, 
+  sanitizeText, 
+  isValidUrl,
+  truncateText 
+} from 'whatsapp-client-sdk';
+
+const processUserInput = async (userPhone: string, userInput: any) => {
+  // Validate phone number
+  if (!validatePhoneNumber(userPhone)) {
+    throw new Error('Invalid phone number format');
+  }
+  
+  const phone = formatPhoneNumber(userPhone);
+  
+  // Sanitize and validate text message
+  if (userInput.message) {
+    const cleanMessage = sanitizeText(userInput.message);
+    const truncatedMessage = truncateText(cleanMessage, 4096);
+    
+    await client.sendText(phone, truncatedMessage);
+  }
+  
+  // Validate URLs in media messages
+  if (userInput.mediaUrl && !isValidUrl(userInput.mediaUrl)) {
+    throw new Error('Invalid media URL');
+  }
+};
+```
+
+### Rate Limiting with Utilities
+
+```typescript
+import { debounce, delay, chunk } from 'whatsapp-client-sdk';
+
+// Debounce rapid user interactions
+const debouncedHandler = debounce(async (userPhone: string, action: string) => {
+  await handleUserAction(userPhone, action);
+}, 1000);
+
+// Batch processing with delays
+const sendBulkNotifications = async (users: User[], message: string) => {
+  const batches = chunk(users, 20);
+  
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    
+    await Promise.all(
+      batch.map(user => client.sendText(user.phone, message))
+    );
+    
+    // Don't delay after the last batch
+    if (i < batches.length - 1) {
+      console.log(`Batch ${i + 1}/${batches.length} completed, waiting...`);
+      await delay(5000); // 5 second delay between batches
+    }
+  }
+};
+```
+
+This utility system provides essential building blocks for robust WhatsApp message processing, input validation, and error handling.

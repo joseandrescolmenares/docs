@@ -1,80 +1,437 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Quick Start Guide"
+description: "Send your first WhatsApp message in under 5 minutes with the WhatsApp Client SDK"
 ---
 
-## Get started in three steps
+# Quick Start Guide
 
-Get your documentation site running locally and make your first customization.
+Get up and running with the WhatsApp Client SDK in minutes. This guide will walk you through sending your first message.
 
-### Step 1: Set up your local environment
+<Info>
+**Prerequisites**: Make sure you've completed the [Installation & Setup](/installation) guide and have your WhatsApp Business API credentials ready.
+</Info>
+
+## Step 1: Initialize the Client
+
+Create a new file and initialize the WhatsApp client with your credentials:
+
+<CodeGroup>
+```typescript send-message.ts
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+// Initialize the client
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+});
+
+// Your phone number (include country code, e.g., +1234567890)
+const recipientNumber = '+1234567890';
+
+async function main() {
+  try {
+    // Test connection first
+    const isConnected = await client.testConnection();
+    
+    if (!isConnected) {
+      throw new Error('Failed to connect to WhatsApp API');
+    }
+    
+    console.log('✅ Connected to WhatsApp API');
+    
+    // Continue to Step 2...
+  } catch (error) {
+    console.error('❌ Error:', error.message);
+  }
+}
+
+main();
+```
+
+```javascript send-message.js
+const { WhatsAppClient } = require('whatsapp-client-sdk');
+
+// Initialize the client
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+});
+
+// Your phone number (include country code, e.g., +1234567890)
+const recipientNumber = '+1234567890';
+
+async function main() {
+  try {
+    // Test connection first
+    const isConnected = await client.testConnection();
+    
+    if (!isConnected) {
+      throw new Error('Failed to connect to WhatsApp API');
+    }
+    
+    console.log('✅ Connected to WhatsApp API');
+    
+    // Continue to Step 2...
+  } catch (error) {
+    console.error('❌ Error:', error.message);
+  }
+}
+
+main();
+```
+</CodeGroup>
+
+## Step 2: Send Your First Text Message
+
+Add this code to send a simple text message:
+
+```typescript
+// Add this inside the main() function after the connection test
+
+// Send a simple text message
+const textResponse = await client.sendText(
+  recipientNumber,
+  '🎉 Hello from WhatsApp Client SDK! This is my first message.'
+);
+
+console.log('📱 Text message sent:', textResponse.messages[0].id);
+```
+
+## Step 3: Send a Message with Interactive Buttons
+
+Let's make it more interesting with interactive buttons:
+
+```typescript
+// Send an interactive message with buttons
+const buttonResponse = await client.sendButtons(
+  recipientNumber,
+  'Welcome to the WhatsApp Client SDK! What would you like to explore?',
+  [
+    { id: 'docs', title: '📚 Documentation' },
+    { id: 'examples', title: '💡 Examples' },
+    { id: 'support', title: '🛟 Support' }
+  ],
+  {
+    header: { type: 'text', text: '🚀 Getting Started' },
+    footer: 'Choose an option to continue'
+  }
+);
+
+console.log('🔘 Button message sent:', buttonResponse.messages[0].id);
+```
+
+## Step 4: Send Media Content
+
+Send an image with a caption:
+
+```typescript
+// Send an image message
+const imageResponse = await client.sendImage(
+  recipientNumber,
+  {
+    link: 'https://via.placeholder.com/400x300/25D366/FFFFFF?text=WhatsApp+SDK',
+    caption: '📸 This image was sent using the WhatsApp Client SDK!'
+  }
+);
+
+console.log('🖼️ Image message sent:', imageResponse.messages[0].id);
+```
+
+## Complete Example
+
+Here's the complete working example:
+
+<CodeGroup>
+```typescript complete-example.ts
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+});
+
+const recipientNumber = '+1234567890'; // Replace with your number
+
+async function quickStartDemo() {
+  try {
+    // Test connection
+    console.log('🔗 Testing WhatsApp API connection...');
+    const isConnected = await client.testConnection();
+    
+    if (!isConnected) {
+      throw new Error('Failed to connect to WhatsApp API');
+    }
+    
+    console.log('✅ Connected to WhatsApp API successfully!');
+
+    // 1. Send text message
+    console.log('📱 Sending text message...');
+    const textResponse = await client.sendText(
+      recipientNumber,
+      '🎉 Hello from WhatsApp Client SDK! This is my first message.'
+    );
+    console.log(`✅ Text message sent: ${textResponse.messages[0].id}`);
+
+    // 2. Send interactive buttons
+    console.log('🔘 Sending interactive buttons...');
+    const buttonResponse = await client.sendButtons(
+      recipientNumber,
+      'Welcome to the WhatsApp Client SDK! What would you like to explore?',
+      [
+        { id: 'docs', title: '📚 Documentation' },
+        { id: 'examples', title: '💡 Examples' },
+        { id: 'support', title: '🛟 Support' }
+      ],
+      {
+        header: { type: 'text', text: '🚀 Getting Started' },
+        footer: 'Choose an option to continue'
+      }
+    );
+    console.log(`✅ Button message sent: ${buttonResponse.messages[0].id}`);
+
+    // 3. Send image
+    console.log('🖼️ Sending image...');
+    const imageResponse = await client.sendImage(
+      recipientNumber,
+      {
+        link: 'https://via.placeholder.com/400x300/25D366/FFFFFF?text=WhatsApp+SDK',
+        caption: '📸 This image was sent using the WhatsApp Client SDK!'
+      }
+    );
+    console.log(`✅ Image sent: ${imageResponse.messages[0].id}`);
+
+    console.log('\n🎉 Quick start demo completed successfully!');
+    console.log('🔗 Check your WhatsApp to see the messages.');
+
+  } catch (error) {
+    console.error('❌ Error in quick start demo:', error.message);
+    
+    // Handle specific error types
+    if (error.name === 'MessageValidationError') {
+      console.error('📋 Field with error:', error.field);
+    } else if (error.name === 'WhatsAppApiError') {
+      console.error('🔗 API Error details:', error.details);
+    }
+  }
+}
+
+quickStartDemo();
+```
+
+```javascript complete-example.js
+const { WhatsAppClient } = require('whatsapp-client-sdk');
+require('dotenv').config(); // Load environment variables
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+});
+
+const recipientNumber = '+1234567890'; // Replace with your number
+
+async function quickStartDemo() {
+  try {
+    // Test connection
+    console.log('🔗 Testing WhatsApp API connection...');
+    const isConnected = await client.testConnection();
+    
+    if (!isConnected) {
+      throw new Error('Failed to connect to WhatsApp API');
+    }
+    
+    console.log('✅ Connected to WhatsApp API successfully!');
+
+    // 1. Send text message
+    console.log('📱 Sending text message...');
+    const textResponse = await client.sendText(
+      recipientNumber,
+      '🎉 Hello from WhatsApp Client SDK! This is my first message.'
+    );
+    console.log(`✅ Text message sent: ${textResponse.messages[0].id}`);
+
+    // 2. Send interactive buttons
+    console.log('🔘 Sending interactive buttons...');
+    const buttonResponse = await client.sendButtons(
+      recipientNumber,
+      'Welcome to the WhatsApp Client SDK! What would you like to explore?',
+      [
+        { id: 'docs', title: '📚 Documentation' },
+        { id: 'examples', title: '💡 Examples' },
+        { id: 'support', title: '🛟 Support' }
+      ],
+      {
+        header: { type: 'text', text: '🚀 Getting Started' },
+        footer: 'Choose an option to continue'
+      }
+    );
+    console.log(`✅ Button message sent: ${buttonResponse.messages[0].id}`);
+
+    // 3. Send image
+    console.log('🖼️ Sending image...');
+    const imageResponse = await client.sendImage(
+      recipientNumber,
+      {
+        link: 'https://via.placeholder.com/400x300/25D366/FFFFFF?text=WhatsApp+SDK',
+        caption: '📸 This image was sent using the WhatsApp Client SDK!'
+      }
+    );
+    console.log(`✅ Image sent: ${imageResponse.messages[0].id}`);
+
+    console.log('\n🎉 Quick start demo completed successfully!');
+    console.log('🔗 Check your WhatsApp to see the messages.');
+
+  } catch (error) {
+    console.error('❌ Error in quick start demo:', error.message);
+    
+    // Handle specific error types
+    if (error.name === 'MessageValidationError') {
+      console.error('📋 Field with error:', error.field);
+    } else if (error.name === 'WhatsAppApiError') {
+      console.error('🔗 API Error details:', error.details);
+    }
+  }
+}
+
+quickStartDemo();
+```
+</CodeGroup>
+
+## Run Your Code
+
+Execute your quick start script:
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```bash
+    # Compile and run TypeScript
+    npx ts-node send-message.ts
+    
+    # Or compile first, then run
+    npx tsc send-message.ts
+    node send-message.js
+    ```
+  </Tab>
+  <Tab title="JavaScript">
+    ```bash
+    node send-message.js
+    ```
+  </Tab>
+</Tabs>
+
+## Expected Output
+
+You should see output similar to this:
+
+```bash
+🔗 Testing WhatsApp API connection...
+✅ Connected to WhatsApp API successfully!
+📱 Sending text message...
+✅ Text message sent: wamid.HBgLM...
+🔘 Sending interactive buttons...
+✅ Button message sent: wamid.HBgLM...
+🖼️ Sending image...
+✅ Image sent: wamid.HBgLM...
+
+🎉 Quick start demo completed successfully!
+🔗 Check your WhatsApp to see the messages.
+```
+
+## Troubleshooting
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+  <Accordion title="Connection failed">
+    - Verify your access token and phone number ID are correct
+    - Check that your Meta Developer account is active
+    - Ensure you have internet connectivity
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+  
+  <Accordion title="Message not received">
+    - Make sure the recipient number is added to your WhatsApp Business account
+    - Verify the phone number format includes the country code
+    - Check the WhatsApp Business API status page
+  </Accordion>
+  
+  <Accordion title="Environment variables not loaded">
+    - Install and configure dotenv: `npm install dotenv`
+    - Add `require('dotenv').config()` at the top of your file
+    - Verify your `.env` file is in the project root
+  </Accordion>
+  
+  <Accordion title="TypeScript errors">
+    - Make sure TypeScript is installed: `npm install -D typescript @types/node`
+    - Install ts-node for direct execution: `npm install -D ts-node`
+    - Check your tsconfig.json configuration
   </Accordion>
 </AccordionGroup>
 
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
+## Next Steps
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card
+    title="Explore Message Types"
+    icon="message"
+    href="/messages/overview"
+  >
+    Learn about all 11 supported message types including lists, templates, and media
+  </Card>
+  <Card
+    title="Set Up Webhooks"
+    icon="webhook"
+    href="/webhooks/overview"
+  >
+    Receive and respond to incoming messages with webhooks
+  </Card>
+  <Card
+    title="Advanced Configuration"
+    icon="cog"
+    href="/configuration"
+  >
+    Configure timeouts, retry logic, and other advanced options
+  </Card>
+  <Card
+    title="Production Deployment"
+    icon="cloud"
+    href="/guides/production-deployment"
+  >
+    Deploy your WhatsApp integration to production
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Common Patterns
+
+### Error Handling Pattern
+
+```typescript
+import { WhatsAppApiError, MessageValidationError, RateLimitError } from 'whatsapp-client-sdk';
+
+try {
+  await client.sendText(recipientNumber, message);
+} catch (error) {
+  if (error instanceof WhatsAppApiError) {
+    console.error('API Error:', error.details);
+  } else if (error instanceof MessageValidationError) {
+    console.error('Validation Error:', error.field);
+  } else if (error instanceof RateLimitError) {
+    console.error('Rate limited. Retry after:', error.retryAfter);
+  }
+}
+```
+
+### Configuration Pattern
+
+```typescript
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  
+  // Optional: Advanced configuration
+  timeout: 60000, // 60 second timeout
+  apiVersion: 'v23.0',
+  baseUrl: 'https://graph.facebook.com',
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN,
+});
+```
+
+<Tip>
+**Pro tip**: Start with the basic configuration and add advanced options as needed. The SDK provides sensible defaults for most use cases.
+</Tip>

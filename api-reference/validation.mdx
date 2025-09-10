@@ -1,0 +1,440 @@
+---
+title: Validation System
+description: Comprehensive validation system for phone numbers, messages, media files, and configuration
+---
+
+# Validation System
+
+The SDK includes a robust multi-layer validation system that ensures data integrity and prevents API errors before they occur.
+
+## Phone Number Validation
+
+### validatePhoneNumber()
+
+Validates international phone number format using E.164 standard.
+
+```typescript
+function validatePhoneNumber(phoneNumber: string): boolean
+```
+
+**Parameters:**
+- `phoneNumber` - Phone number string to validate
+
+**Returns:**
+- `boolean` - True if valid, false otherwise
+
+**Examples:**
+
+```typescript
+import { validatePhoneNumber } from 'whatsapp-client-sdk';
+
+// Valid formats
+validatePhoneNumber('+573001234567'); // true - Colombia
+validatePhoneNumber('+1234567890');   // true - Generic
+validatePhoneNumber('+447911123456'); // true - UK
+
+// Invalid formats
+validatePhoneNumber('123');           // false - Too short
+validatePhoneNumber('+0123456789');   // false - Starts with 0
+validatePhoneNumber('++123456789');   // false - Double +
+validatePhoneNumber('1234567890');    // false - Missing +
+```
+
+**Regex Pattern:**
+```typescript
+const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+```
+
+## Configuration Validation
+
+### validateConfig()
+
+Validates WhatsApp client configuration and throws detailed errors for missing fields.
+
+```typescript
+function validateConfig(config: WhatsAppConfig): void
+```
+
+**Parameters:**
+- `config` - WhatsAppConfig object to validate
+
+**Throws:**
+- `ConfigurationError` - For missing or invalid fields
+
+**Example:**
+
+```typescript
+try {
+  validateConfig({
+    accessToken: 'valid_token',
+    phoneNumberId: '123456789'
+  });
+} catch (error) {
+  if (error instanceof ConfigurationError) {
+    console.log('Missing fields:', error.missingFields);
+  }
+}
+```
+
+**Validation Rules:**
+- `accessToken` - Required, must match format `[A-Za-z0-9_-]+`
+- `phoneNumberId` - Required, must be non-empty string
+- `baseUrl` - Optional, must be valid URL if provided
+- `timeout` - Optional, must be positive number
+
+## Message Validation
+
+### validateMessage()
+
+Validates outgoing messages based on WhatsApp API requirements.
+
+```typescript
+function validateMessage(message: OutgoingMessage): void
+```
+
+**Parameters:**
+- `message` - Outgoing message object to validate
+
+**Throws:**
+- `MessageValidationError` - For invalid message content
+
+### Text Message Validation
+
+```typescript
+// Text content validation
+if (!message.text?.body) {
+  throw new MessageValidationError('Text body is required', 'text.body');
+}
+
+if (message.text.body.length > 4096) {
+  throw new MessageValidationError(
+    'Text exceeds 4096 characters limit',
+    'text.body'
+  );
+}
+```
+
+### Interactive Message Validation
+
+```typescript
+// Button validation
+if (message.interactive?.type === 'button') {
+  const buttons = message.interactive.action?.buttons || [];
+  
+  if (buttons.length === 0) {
+    throw new MessageValidationError(
+      'At least one button is required',
+      'interactive.action.buttons'
+    );
+  }
+  
+  if (buttons.length > 3) {
+    throw new MessageValidationError(
+      'Maximum 3 buttons allowed',
+      'interactive.action.buttons'
+    );
+  }
+  
+  // Button title validation
+  buttons.forEach((button, index) => {
+    if (!button.title) {
+      throw new MessageValidationError(
+        `Button title is required`,
+        `interactive.action.buttons[${index}].title`
+      );
+    }
+    
+    if (button.title.length > 20) {
+      throw new MessageValidationError(
+        `Button title exceeds 20 characters`,
+        `interactive.action.buttons[${index}].title`
+      );
+    }
+  });
+}
+```
+
+### List Message Validation
+
+```typescript
+// List validation
+if (message.interactive?.type === 'list') {
+  const sections = message.interactive.action?.sections || [];
+  
+  if (sections.length === 0) {
+    throw new MessageValidationError(
+      'At least one section is required',
+      'interactive.action.sections'
+    );
+  }
+  
+  if (sections.length > 10) {
+    throw new MessageValidationError(
+      'Maximum 10 sections allowed',
+      'interactive.action.sections'
+    );
+  }
+  
+  // Section rows validation
+  sections.forEach((section, sectionIndex) => {
+    if (!section.rows || section.rows.length === 0) {
+      throw new MessageValidationError(
+        'Each section must have at least one row',
+        `interactive.action.sections[${sectionIndex}].rows`
+      );
+    }
+    
+    if (section.rows.length > 10) {
+      throw new MessageValidationError(
+        'Maximum 10 rows per section',
+        `interactive.action.sections[${sectionIndex}].rows`
+      );
+    }
+  });
+}
+```
+
+## Media File Validation
+
+### validateMediaFile()
+
+Validates media files against WhatsApp size and type restrictions.
+
+```typescript
+function validateMediaFile(
+  buffer: Buffer,
+  type: 'image' | 'video' | 'audio' | 'document'
+): void
+```
+
+**Parameters:**
+- `buffer` - File buffer to validate
+- `type` - Media type category
+
+**Throws:**
+- `MediaProcessingError` - For oversized or invalid files
+
+**Size Limits:**
+
+| Media Type | Maximum Size |
+|------------|--------------|
+| Image      | 5MB         |
+| Video      | 16MB        |
+| Audio      | 16MB        |
+| Document   | 100MB       |
+
+**Example:**
+
+```typescript
+import { validateMediaFile, MediaProcessingError } from 'whatsapp-client-sdk';
+import fs from 'fs';
+
+try {
+  const imageBuffer = fs.readFileSync('./large-image.jpg');
+  validateMediaFile(imageBuffer, 'image');
+} catch (error) {
+  if (error instanceof MediaProcessingError) {
+    console.log('File too large:', error.message);
+  }
+}
+```
+
+### MIME Type Validation
+
+**Supported MIME Types:**
+
+```typescript
+const allowedMimeTypes = {
+  image: [
+    'image/jpeg',
+    'image/png', 
+    'image/webp'
+  ],
+  video: [
+    'video/mp4',
+    'video/3gpp'
+  ],
+  audio: [
+    'audio/mpeg',    // MP3
+    'audio/ogg',     // OGG
+    'audio/wav',     // WAV
+    'audio/aac',     // AAC
+    'audio/m4a',     // M4A
+    'audio/amr'      // AMR
+  ],
+  document: [
+    'application/pdf',
+    'application/msword',                    // DOC
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
+    'application/vnd.ms-excel',              // XLS
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLSX
+    'text/plain',                            // TXT
+    'text/csv'                               // CSV
+  ]
+};
+```
+
+## Template Message Validation
+
+### Template Parameter Validation
+
+```typescript
+// Validate template components
+if (message.template?.components) {
+  message.template.components.forEach((component, index) => {
+    if (component.type === 'body' && component.parameters) {
+      component.parameters.forEach((param, paramIndex) => {
+        if (param.type === 'text' && !param.text) {
+          throw new MessageValidationError(
+            'Text parameter cannot be empty',
+            `template.components[${index}].parameters[${paramIndex}].text`
+          );
+        }
+      });
+    }
+  });
+}
+```
+
+## Contact Message Validation
+
+### Contact Information Validation
+
+```typescript
+// Validate contact structure
+if (message.contacts) {
+  message.contacts.forEach((contact, index) => {
+    if (!contact.name?.formatted_name) {
+      throw new MessageValidationError(
+        'Contact must have a formatted name',
+        `contacts[${index}].name.formatted_name`
+      );
+    }
+    
+    // Phone number validation
+    if (contact.phones) {
+      contact.phones.forEach((phone, phoneIndex) => {
+        if (!validatePhoneNumber(phone.phone)) {
+          throw new MessageValidationError(
+            'Invalid contact phone number',
+            `contacts[${index}].phones[${phoneIndex}].phone`
+          );
+        }
+      });
+    }
+  });
+}
+```
+
+## Validation Error Handling
+
+### MessageValidationError
+
+```typescript
+class MessageValidationError extends Error {
+  public readonly field: string;
+  public readonly code: string = 'MESSAGE_VALIDATION_ERROR';
+  
+  constructor(message: string, field: string) {
+    super(message);
+    this.name = 'MessageValidationError';
+    this.field = field;
+  }
+}
+```
+
+**Usage Example:**
+
+```typescript
+try {
+  await client.sendText('invalid_phone', 'Hello');
+} catch (error) {
+  if (error instanceof MessageValidationError) {
+    console.log('Validation failed:', error.message);
+    console.log('Field:', error.field); // 'to'
+    console.log('Error code:', error.code); // 'MESSAGE_VALIDATION_ERROR'
+  }
+}
+```
+
+## Best Practices
+
+### 1. Prevalidation
+
+Always validate input before making API calls:
+
+```typescript
+// Validate before sending
+if (!validatePhoneNumber(phoneNumber)) {
+  throw new Error('Invalid phone number format');
+}
+
+// Then send
+await client.sendText(phoneNumber, message);
+```
+
+### 2. Media Size Checks
+
+Check file sizes before uploading:
+
+```typescript
+import fs from 'fs';
+
+const stats = fs.statSync('./video.mp4');
+if (stats.size > 16 * 1024 * 1024) { // 16MB
+  throw new Error('Video file too large');
+}
+```
+
+### 3. Text Length Validation
+
+Validate text length for different contexts:
+
+```typescript
+const validateTextLength = (text: string, context: string) => {
+  const limits = {
+    text_message: 4096,
+    caption: 1024,
+    button_title: 20,
+    list_title: 24,
+    list_description: 72
+  };
+  
+  const limit = limits[context];
+  if (text.length > limit) {
+    throw new Error(`${context} exceeds ${limit} characters`);
+  }
+};
+```
+
+## Validation Utilities
+
+### Text Sanitization
+
+```typescript
+import { sanitizeText } from 'whatsapp-client-sdk';
+
+// Remove control characters and trim
+const clean = sanitizeText('Text with\nspecial\tcharacters  ');
+// Result: "Text with special characters"
+```
+
+### URL Validation
+
+```typescript
+import { isValidUrl } from 'whatsapp-client-sdk';
+
+const isValid = isValidUrl('https://example.com'); // true
+const isInvalid = isValidUrl('not-a-url');         // false
+```
+
+### Phone Number Formatting
+
+```typescript
+import { formatPhoneNumber } from 'whatsapp-client-sdk';
+
+// Add + prefix if missing
+const formatted = formatPhoneNumber('573001234567'); // '+573001234567'
+```
+
+This validation system ensures that all data sent through the SDK meets WhatsApp API requirements, preventing errors and improving reliability.

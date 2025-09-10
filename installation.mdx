@@ -1,0 +1,356 @@
+---
+title: "Installation & Setup"
+description: "Install the WhatsApp Client SDK and configure your WhatsApp Business API credentials"
+---
+
+# Installation & Setup
+
+Get the WhatsApp Client SDK up and running in your Node.js project.
+
+## Prerequisites
+
+Before installing the SDK, make sure you have:
+
+<Steps>
+  <Step title="Node.js 16 or higher">
+    The SDK requires Node.js version 16 or higher. Check your version:
+    ```bash
+    node --version
+    ```
+  </Step>
+  <Step title="WhatsApp Business Account">
+    A verified WhatsApp Business account with API access through Meta Business.
+  </Step>
+  <Step title="Meta Developer Account">
+    Access to Meta for Developers to create an app and get API credentials.
+  </Step>
+</Steps>
+
+## Package Installation
+
+Install the SDK using your preferred package manager:
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npm install whatsapp-client-sdk
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add whatsapp-client-sdk
+    ```
+  </Tab>
+  <Tab title="pnpm">
+    ```bash
+    pnpm add whatsapp-client-sdk
+    ```
+  </Tab>
+  <Tab title="bun">
+    ```bash
+    bun add whatsapp-client-sdk
+    ```
+  </Tab>
+</Tabs>
+
+## TypeScript Support
+
+The SDK is built with TypeScript and includes complete type definitions out of the box. No additional `@types` packages are needed.
+
+<Info>
+TypeScript 4.5+ is recommended for the best experience with the SDK's advanced type features.
+</Info>
+
+## Getting API Credentials
+
+To use the WhatsApp Business API, you need to obtain credentials from Meta:
+
+### 1. Create a Meta Developer Account
+
+1. Go to [Meta for Developers](https://developers.facebook.com/)
+2. Create an account or log in with your existing Facebook account
+3. Complete the developer verification process
+
+### 2. Create a New App
+
+1. Navigate to **My Apps** in the developer console
+2. Click **Create App**
+3. Choose **Business** as the app type
+4. Fill in your app details and create the app
+
+### 3. Add WhatsApp Product
+
+1. In your app dashboard, click **Add Product**
+2. Find **WhatsApp** and click **Set up**
+3. Choose **WhatsApp Business API**
+
+### 4. Get Your Credentials
+
+After setting up WhatsApp, you'll need these credentials:
+
+<AccordionGroup>
+  <Accordion title="Access Token">
+    Found in the WhatsApp > Getting Started section of your app dashboard.
+    This token authenticates your requests to the WhatsApp API.
+  </Accordion>
+  
+  <Accordion title="Phone Number ID">
+    Found in the WhatsApp > API Setup section.
+    This identifies your WhatsApp Business phone number.
+  </Accordion>
+  
+  <Accordion title="Webhook Verify Token">
+    You create this token when setting up webhooks.
+    Used to verify webhook endpoints during setup.
+  </Accordion>
+  
+  <Accordion title="Business Account ID">
+    Found in the WhatsApp > API Setup section.
+    Optional, but useful for advanced business features.
+  </Accordion>
+</AccordionGroup>
+
+## Environment Variables
+
+Set up your environment variables to securely store your credentials:
+
+<CodeGroup>
+```bash .env
+# Required credentials
+WHATSAPP_ACCESS_TOKEN=your_access_token_here
+WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id_here
+
+# Optional but recommended
+WHATSAPP_WEBHOOK_TOKEN=your_webhook_verify_token_here
+WHATSAPP_BUSINESS_ID=your_business_account_id_here
+
+# Optional API configuration
+WHATSAPP_API_VERSION=v23.0
+WHATSAPP_BASE_URL=https://graph.facebook.com
+```
+
+```bash .env.local (Next.js)
+# For Next.js projects, use .env.local
+WHATSAPP_ACCESS_TOKEN=your_access_token_here
+WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id_here
+WHATSAPP_WEBHOOK_TOKEN=your_webhook_verify_token_here
+```
+
+```bash .env.example
+# Create this file for your team (without real values)
+WHATSAPP_ACCESS_TOKEN=your_access_token_here
+WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id_here
+WHATSAPP_WEBHOOK_TOKEN=your_webhook_verify_token_here
+WHATSAPP_BUSINESS_ID=your_business_account_id_here
+```
+</CodeGroup>
+
+<Warning>
+Never commit your actual credentials to version control. Always use environment variables and add `.env` to your `.gitignore` file.
+</Warning>
+
+## Basic Initialization
+
+Create your first WhatsApp client instance:
+
+<CodeGroup>
+```typescript TypeScript
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN,
+});
+
+// Test the connection
+const isConnected = await client.testConnection();
+console.log('WhatsApp API connected:', isConnected);
+```
+
+```javascript JavaScript (ES6)
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN,
+});
+
+// Test the connection
+const isConnected = await client.testConnection();
+console.log('WhatsApp API connected:', isConnected);
+```
+
+```javascript JavaScript (CommonJS)
+const { WhatsAppClient } = require('whatsapp-client-sdk');
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN,
+});
+
+// Test the connection (using .then() for older Node.js)
+client.testConnection().then(isConnected => {
+  console.log('WhatsApp API connected:', isConnected);
+});
+```
+</CodeGroup>
+
+## Verification Steps
+
+After installation, verify everything is working correctly:
+
+### 1. Test API Connection
+
+```typescript
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+async function verifySetup() {
+  try {
+    const client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+    });
+
+    // Test API connectivity
+    const isConnected = await client.testConnection();
+    
+    if (isConnected) {
+      console.log('✅ WhatsApp API connection successful');
+      
+      // Get client configuration (access token will be masked)
+      const config = client.getConfig();
+      console.log('📋 Configuration:', config);
+      
+    } else {
+      console.log('❌ WhatsApp API connection failed');
+    }
+  } catch (error) {
+    console.error('🚨 Setup error:', error.message);
+  }
+}
+
+verifySetup();
+```
+
+### 2. Send a Test Message
+
+```typescript
+async function sendTestMessage() {
+  try {
+    const client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+    });
+
+    // Replace with your WhatsApp number (include country code)
+    const testNumber = '+1234567890';
+    
+    const response = await client.sendText(
+      testNumber,
+      '🎉 Hello from WhatsApp Client SDK!'
+    );
+    
+    console.log('✅ Test message sent:', response.messages[0].id);
+  } catch (error) {
+    console.error('❌ Failed to send test message:', error.message);
+  }
+}
+
+// sendTestMessage();
+```
+
+<Tip>
+Uncomment the `sendTestMessage()` call only after you've added your test phone number to the WhatsApp Business account's recipients list.
+</Tip>
+
+## Common Installation Issues
+
+<AccordionGroup>
+  <Accordion title="Module not found errors">
+    Make sure you're using the correct import syntax for your environment:
+    - ES6 modules: `import { WhatsAppClient } from 'whatsapp-client-sdk'`
+    - CommonJS: `const { WhatsAppClient } = require('whatsapp-client-sdk')`
+  </Accordion>
+  
+  <Accordion title="TypeScript compilation errors">
+    Ensure your `tsconfig.json` includes:
+    ```json
+    {
+      "compilerOptions": {
+        "target": "ES2020",
+        "module": "commonjs",
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Environment variable not loaded">
+    For Node.js projects, install and configure `dotenv`:
+    ```bash
+    npm install dotenv
+    ```
+    
+    Then in your main file:
+    ```javascript
+    require('dotenv').config();
+    // or for ES6:
+    import 'dotenv/config';
+    ```
+  </Accordion>
+  
+  <Accordion title="API connection fails">
+    Check that:
+    - Your access token is valid and not expired
+    - Your phone number ID is correct
+    - You have proper internet connectivity
+    - Your Meta Developer account is in good standing
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Quick Start Guide"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Send your first message in under 5 minutes
+  </Card>
+  <Card
+    title="Configuration Options"
+    icon="cog"
+    href="/configuration"
+  >
+    Explore advanced configuration options
+  </Card>
+  <Card
+    title="Message Types"
+    icon="message"
+    href="/messages/overview"
+  >
+    Learn about all supported message types
+  </Card>
+  <Card
+    title="Webhook Setup"
+    icon="webhook"
+    href="/webhooks/overview"
+  >
+    Set up webhooks to receive messages
+  </Card>
+</CardGroup>
+
+## Need Help?
+
+<Card
+  title="Join our community"
+  icon="question-circle"
+  href="mailto:joseandrescolmenares02@gmail.com"
+>
+  Get help from the community or reach out for support
+</Card>

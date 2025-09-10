@@ -1,0 +1,558 @@
+---
+title: "Text Messages"
+description: "Send text messages with URL previews, reply support, and emoji formatting"
+---
+
+# Text Messages
+
+Text messages are the foundation of WhatsApp communication. The SDK provides a simple yet powerful interface for sending text messages with advanced features like URL previews and reply support.
+
+## Basic Usage
+
+```typescript
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+});
+
+// Simple text message
+await client.sendText('+1234567890', 'Hello, World!');
+```
+
+## Method Signature
+
+```typescript
+async sendText(
+  to: string,
+  text: string, 
+  options?: TextOptions
+): Promise<MessageResponse>
+```
+
+### Parameters
+
+- **to** (`string`): Recipient phone number in international format
+- **text** (`string`): Message content (max 4,096 characters)
+- **options** (`TextOptions`, optional): Additional message options
+
+### TextOptions Interface
+
+```typescript
+interface TextOptions {
+  previewUrl?: boolean;      // Enable URL preview (default: false)
+  replyToMessageId?: string; // Reply to specific message
+}
+```
+
+## Examples
+
+### Basic Text Message
+
+```typescript
+const response = await client.sendText(
+  '+1234567890',
+  'Welcome to our service! We\'re excited to help you.'
+);
+
+console.log('Message ID:', response.messages[0].id);
+```
+
+### Text with URL Preview
+
+```typescript
+// Enable URL preview for shared links
+await client.sendText(
+  '+1234567890',
+  'Check out our latest blog post: https://blog.example.com/latest-updates',
+  { previewUrl: true }
+);
+```
+
+### Reply to Message
+
+```typescript
+// Reply to a specific message
+await client.sendText(
+  '+1234567890',
+  'Thanks for your question! Here\'s the answer...',
+  { replyToMessageId: 'wamid.HBgLM2E5YzE3...' }
+);
+```
+
+### Formatted Text with Emojis
+
+```typescript
+await client.sendText(
+  '+1234567890',
+  '🎉 Congratulations! 🎉\n\n' +
+  'Your order has been confirmed:\n' +
+  '• Order ID: #12345\n' +
+  '• Total: $29.99\n' +
+  '• ETA: 2-3 business days\n\n' +
+  'Track your order: https://track.example.com/12345'
+);
+```
+
+### Multi-line Messages
+
+```typescript
+const orderDetails = `
+📦 Order Confirmation
+
+Order #: 123456
+Date: ${new Date().toLocaleDateString()}
+Total: $99.99
+
+Items:
+• Product A - $49.99
+• Product B - $39.99
+• Shipping - $10.00
+
+Delivery Address:
+123 Main St
+New York, NY 10001
+
+Expected delivery: 3-5 business days
+`.trim();
+
+await client.sendText('+1234567890', orderDetails);
+```
+
+## Character Limits and Validation
+
+### Maximum Length
+
+Text messages are limited to **4,096 characters**. The SDK automatically validates this:
+
+```typescript
+try {
+  const longMessage = 'A'.repeat(5000); // Too long
+  await client.sendText('+1234567890', longMessage);
+} catch (error) {
+  if (error instanceof MessageValidationError) {
+    console.error('Message too long:', error.message);
+    // Output: "Text exceeds 4096 characters limit"
+  }
+}
+```
+
+### Character Counting
+
+```typescript
+const message = 'Your message content here...';
+
+// Check message length before sending
+if (message.length > 4096) {
+  console.error(`Message too long: ${message.length} characters (max 4096)`);
+  return;
+}
+
+console.log(`Message is valid (${message.length} characters)`);
+await client.sendText('+1234567890', message);
+```
+
+## URL Preview Feature
+
+When `previewUrl` is enabled, WhatsApp will generate a preview for the first URL found in the message.
+
+### URL Preview Examples
+
+```typescript
+// News article with preview
+await client.sendText(
+  '+1234567890',
+  'Breaking: Important announcement from our team.\n\n' +
+  'Read the full story: https://news.example.com/breaking-news\n\n' +
+  'Let us know what you think!',
+  { previewUrl: true }
+);
+
+// Product link with preview
+await client.sendText(
+  '+1234567890',
+  'Check out this amazing product we found for you!\n\n' +
+  'https://shop.example.com/product/amazing-widget\n\n' +
+  '💰 Special discount code: SAVE20',
+  { previewUrl: true }
+);
+```
+
+### URL Preview Best Practices
+
+<Tabs>
+  <Tab title="✅ Good Practices">
+    ```typescript
+    // Single URL for clean preview
+    await client.sendText(to, 
+      'Article: The Future of Technology\n\n' +
+      'https://blog.example.com/future-tech',
+      { previewUrl: true }
+    );
+    
+    // Descriptive context before URL
+    await client.sendText(to,
+      'Your invoice is ready for download:\n' +
+      'https://billing.example.com/invoice/123',
+      { previewUrl: true }
+    );
+    ```
+  </Tab>
+  <Tab title="❌ Avoid">
+    ```typescript
+    // Multiple URLs (only first gets preview)
+    await client.sendText(to,
+      'Check these links:\n' +
+      'https://example1.com\n' +
+      'https://example2.com',
+      { previewUrl: true } // Only first URL previewed
+    );
+    
+    // URLs without context
+    await client.sendText(to,
+      'https://example.com',
+      { previewUrl: true } // No context provided
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Reply Messages
+
+Reply to specific messages to maintain conversation context:
+
+### Basic Reply
+
+```typescript
+// In webhook handler, get the message ID
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    // Reply to the user's message
+    await client.sendText(
+      message.from,
+      'Thanks for your message! We received: "' + message.text + '"',
+      { replyToMessageId: message.id }
+    );
+  }
+});
+```
+
+### Contextual Replies
+
+```typescript
+// Support conversation example
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    const userText = message.text.toLowerCase();
+    
+    if (userText.includes('help')) {
+      await client.sendText(
+        message.from,
+        '🆘 Our support team will assist you shortly.\n\n' +
+        'In the meantime, check our FAQ: https://help.example.com',
+        { 
+          replyToMessageId: message.id,
+          previewUrl: true 
+        }
+      );
+    } else if (userText.includes('order')) {
+      await client.sendText(
+        message.from,
+        '📦 Please provide your order number and I\'ll look it up for you.',
+        { replyToMessageId: message.id }
+      );
+    }
+  }
+});
+```
+
+## Text Formatting and Styling
+
+### Emoji Usage
+
+```typescript
+// Effective emoji usage
+await client.sendText('+1234567890', 
+  '🎉 Welcome to our service!\n\n' +
+  '✅ Account created successfully\n' +
+  '📧 Confirmation email sent\n' +
+  '🔗 Setup your profile: https://app.example.com/setup',
+  { previewUrl: true }
+);
+
+// Status indicators
+await client.sendText('+1234567890',
+  '📊 System Status Update\n\n' +
+  '✅ Website - Operational\n' +
+  '✅ API - Operational\n' +
+  '⚠️ Database - Degraded Performance\n' +
+  '❌ Email Service - Down\n\n' +
+  'Updates: https://status.example.com'
+);
+```
+
+### Text Structure
+
+```typescript
+// Well-structured message
+const structuredMessage = [
+  '📋 Daily Report Summary',
+  '',
+  '📈 Metrics:',
+  '• Sales: +15% vs yesterday',
+  '• Traffic: 25,847 visitors',
+  '• Conversion: 3.2%',
+  '',
+  '🎯 Top Performers:',
+  '1. Product A - 127 sales',
+  '2. Product B - 89 sales',
+  '3. Product C - 56 sales',
+  '',
+  'Full report: https://dashboard.example.com/daily'
+].join('\n');
+
+await client.sendText('+1234567890', structuredMessage, { previewUrl: true });
+```
+
+## Advanced Use Cases
+
+### Dynamic Content
+
+```typescript
+async function sendPersonalizedWelcome(phoneNumber: string, userName: string) {
+  const welcomeMessage = `
+Hello ${userName}! 👋
+
+Welcome to our platform. Here's what you can do:
+
+🚀 Get started: Complete your profile
+📚 Learn more: Check out our tutorials  
+💬 Get help: Contact our support team
+
+Ready to begin? https://app.example.com/onboarding
+`.trim();
+
+  return await client.sendText(phoneNumber, welcomeMessage, { previewUrl: true });
+}
+
+// Usage
+await sendPersonalizedWelcome('+1234567890', 'John');
+```
+
+### Conditional Messaging
+
+```typescript
+async function sendOrderUpdate(phoneNumber: string, order: any) {
+  let message = `📦 Order Update - #${order.id}\n\n`;
+  
+  switch (order.status) {
+    case 'confirmed':
+      message += '✅ Your order has been confirmed!\n';
+      message += `💰 Total: $${order.total}\n`;
+      message += `📅 Expected delivery: ${order.deliveryDate}`;
+      break;
+      
+    case 'shipped':
+      message += '🚚 Your order has shipped!\n';
+      message += `📦 Tracking: ${order.trackingNumber}\n`;
+      message += `🔗 Track here: ${order.trackingUrl}`;
+      break;
+      
+    case 'delivered':
+      message += '🎉 Your order has been delivered!\n';
+      message += 'We hope you love your purchase.\n\n';
+      message += '⭐ Rate your experience: https://review.example.com';
+      break;
+  }
+  
+  return await client.sendText(phoneNumber, message, { previewUrl: true });
+}
+```
+
+### Template-like Messages
+
+```typescript
+class MessageTemplates {
+  static appointmentReminder(name: string, date: string, time: string): string {
+    return `
+🏥 Appointment Reminder
+
+Hi ${name},
+
+This is a reminder about your upcoming appointment:
+
+📅 Date: ${date}
+🕐 Time: ${time}
+📍 Location: Main Clinic
+
+Need to reschedule? Reply "RESCHEDULE"
+Questions? Call us at (555) 123-4567
+`.trim();
+  }
+  
+  static paymentReceived(amount: string, invoice: string): string {
+    return `
+💳 Payment Received
+
+Thank you! We've received your payment:
+
+💰 Amount: $${amount}
+📄 Invoice: #${invoice}
+📅 Date: ${new Date().toLocaleDateString()}
+
+Receipt: https://billing.example.com/receipt/${invoice}
+`.trim();
+  }
+}
+
+// Usage
+await client.sendText(
+  '+1234567890',
+  MessageTemplates.appointmentReminder('John Doe', 'March 15', '2:30 PM')
+);
+```
+
+## Error Handling
+
+### Common Errors
+
+```typescript
+import { 
+  MessageValidationError, 
+  WhatsAppApiError 
+} from 'whatsapp-client-sdk';
+
+try {
+  await client.sendText(to, message);
+} catch (error) {
+  if (error instanceof MessageValidationError) {
+    switch (error.field) {
+      case 'to':
+        console.error('Invalid phone number:', error.value);
+        break;
+      case 'text.body':
+        console.error('Invalid text content:', error.message);
+        break;
+    }
+  } else if (error instanceof WhatsAppApiError) {
+    switch (error.code) {
+      case 131:
+        console.error('Number not on WhatsApp');
+        break;
+      case 132:
+        console.error('Message undeliverable');
+        break;
+      default:
+        console.error('API error:', error.details);
+    }
+  }
+}
+```
+
+### Retry Logic
+
+```typescript
+async function sendTextWithRetry(
+  to: string, 
+  text: string, 
+  options?: TextOptions,
+  maxRetries: number = 3
+): Promise<MessageResponse> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await client.sendText(to, text, options);
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+      
+      // Wait before retry (exponential backoff)
+      const delay = Math.pow(2, attempt) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw new Error('Max retries exceeded');
+}
+```
+
+## Best Practices
+
+### 1. Message Length
+
+```typescript
+// ✅ Good: Concise and clear
+await client.sendText(to, 
+  'Order #12345 confirmed! 📦\n' +
+  'Tracking: https://track.example.com/12345'
+);
+
+// ❌ Avoid: Too verbose
+await client.sendText(to,
+  'We are pleased to inform you that your order number 12345 has been successfully confirmed and is now being processed by our fulfillment team...'
+);
+```
+
+### 2. URL Preview Usage
+
+```typescript
+// ✅ Good: Enable for important links
+await client.sendText(to,
+  'Your invoice is ready: https://billing.example.com/invoice/123',
+  { previewUrl: true }
+);
+
+// ❌ Avoid: Preview for every URL
+await client.sendText(to,
+  'Contact us at https://contact.example.com or https://support.example.com',
+  { previewUrl: true } // Only first URL gets preview
+);
+```
+
+### 3. Reply Context
+
+```typescript
+// ✅ Good: Meaningful replies
+await client.sendText(to,
+  'Thanks for your order inquiry! Here are the details you requested...',
+  { replyToMessageId: originalMessageId }
+);
+
+// ❌ Avoid: Generic replies
+await client.sendText(to,
+  'OK',
+  { replyToMessageId: originalMessageId }
+);
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Media Messages"
+    icon="photo"
+    href="/messages/media"
+  >
+    Learn to send images, videos, and documents
+  </Card>
+  <Card
+    title="Interactive Messages"
+    icon="hand-pointer"
+    href="/messages/interactive"
+  >
+    Create buttons and lists for user interaction
+  </Card>
+  <Card
+    title="Webhook Handling"
+    icon="webhook"
+    href="/webhooks/overview"
+  >
+    Handle incoming text messages and replies
+  </Card>
+  <Card
+    title="Template Messages"
+    icon="template"
+    href="/messages/template"
+  >
+    Use pre-approved templates for business messaging
+  </Card>
+</CardGroup>

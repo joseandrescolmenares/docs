@@ -1,0 +1,340 @@
+---
+title: Media Messages
+description: Send images, videos, audio files, and documents with the WhatsApp SDK
+---
+
+# Media Messages
+
+Send rich media content including images, videos, audio files, and documents. The SDK supports both URL-based media and file uploads.
+
+## Supported Media Types
+
+| Media Type | Formats | Max Size | WhatsApp Limits |
+|------------|---------|----------|-----------------|
+| **Images** | JPEG, PNG, WebP | 5MB | Caption: 1024 chars |
+| **Videos** | MP4, 3GPP | 16MB | Caption: 1024 chars |
+| **Audio** | AAC, M4A, AMR, MP3, OGG | 16MB | No caption |
+| **Documents** | PDF, DOC, TXT, etc. | 100MB | Caption: 1024 chars |
+
+## Image Messages
+
+Send image messages with optional captions.
+
+### Basic Usage
+
+```typescript
+// Send image from URL
+await client.sendImage('+573001234567', {
+  link: 'https://example.com/image.jpg',
+  caption: 'Beautiful sunset!'
+});
+
+// Send uploaded image by ID
+await client.sendImage('+573001234567', {
+  id: 'uploaded_image_id',
+  caption: 'Photo from gallery'
+});
+```
+
+### Upload and Send
+
+```typescript
+import fs from 'fs';
+
+// Upload image first
+const imageBuffer = fs.readFileSync('./photo.jpg');
+const mediaResponse = await client.uploadMedia(imageBuffer, 'image');
+
+// Send using the media ID
+await client.sendImage('+573001234567', {
+  id: mediaResponse.id,
+  caption: 'Uploaded from local file'
+});
+```
+
+## Video Messages
+
+Send video files with captions.
+
+```typescript
+// Send video from URL
+await client.sendVideo('+573001234567', {
+  link: 'https://example.com/video.mp4',
+  caption: 'Check out this tutorial!'
+});
+
+// Upload and send video
+const videoBuffer = fs.readFileSync('./tutorial.mp4');
+const videoMedia = await client.uploadMedia(videoBuffer, 'video');
+
+await client.sendVideo('+573001234567', {
+  id: videoMedia.id,
+  caption: 'Tutorial video uploaded'
+});
+```
+
+## Audio Messages
+
+Send audio files - perfect for voice messages or music.
+
+```typescript
+// Send audio from URL
+await client.sendAudio('+573001234567', {
+  link: 'https://example.com/audio.mp3'
+});
+
+// Upload and send audio
+const audioBuffer = fs.readFileSync('./voice_message.aac');
+const audioMedia = await client.uploadMedia(audioBuffer, 'audio');
+
+await client.sendAudio('+573001234567', {
+  id: audioMedia.id
+});
+```
+
+<Note>
+Audio messages don't support captions in WhatsApp.
+</Note>
+
+## Document Messages
+
+Send documents with custom filenames and captions.
+
+```typescript
+// Send document from URL
+await client.sendDocument('+573001234567', {
+  link: 'https://example.com/report.pdf',
+  filename: 'Monthly_Report_January_2024.pdf',
+  caption: 'Please review the attached monthly report'
+});
+
+// Upload and send document
+const documentBuffer = fs.readFileSync('./contract.pdf');
+const documentMedia = await client.uploadMedia(documentBuffer, 'document');
+
+await client.sendDocument('+573001234567', {
+  id: documentMedia.id,
+  filename: 'Service_Contract.pdf',
+  caption: 'Contract ready for signature'
+});
+```
+
+## Media Management
+
+### Upload Media
+
+Upload files to WhatsApp servers for reuse:
+
+```typescript
+// Upload different media types
+const imageMedia = await client.uploadMedia(imageBuffer, 'image');
+const videoMedia = await client.uploadMedia(videoBuffer, 'video');
+const audioMedia = await client.uploadMedia(audioBuffer, 'audio');
+const docMedia = await client.uploadMedia(docBuffer, 'document');
+
+console.log('Image ID:', imageMedia.id); // Reuse this ID multiple times
+```
+
+### Get Media Information
+
+Retrieve information about uploaded media:
+
+```typescript
+const mediaInfo = await client.getMediaInfo('media_id_here');
+
+console.log({
+  url: mediaInfo.url,           // Temporary download URL
+  mimeType: mediaInfo.mime_type, // e.g., 'image/jpeg'
+  fileSize: mediaInfo.file_size, // Size in bytes
+  sha256: mediaInfo.sha256      // File hash
+});
+```
+
+### Download Media
+
+Download media files from received messages:
+
+```typescript
+// In webhook handler
+const processor = client.createWebhookProcessor({
+  onImageMessage: async (message) => {
+    const mediaId = message.media.id;
+    
+    // Download the image
+    const imageBuffer = await client.downloadMedia(mediaId);
+    
+    // Save or process the image
+    fs.writeFileSync(`./downloads/${mediaId}.jpg`, imageBuffer);
+    
+    console.log(`Downloaded image: ${message.media.caption || 'No caption'}`);
+  }
+});
+```
+
+## Advanced Media Examples
+
+### Batch Media Upload
+
+```typescript
+const uploadMultipleFiles = async (files: string[]) => {
+  const uploadPromises = files.map(async (filePath) => {
+    const buffer = fs.readFileSync(filePath);
+    const extension = path.extname(filePath).toLowerCase();
+    
+    let mediaType: 'image' | 'video' | 'audio' | 'document';
+    
+    if (['.jpg', '.jpeg', '.png', '.webp'].includes(extension)) {
+      mediaType = 'image';
+    } else if (['.mp4', '.3gp'].includes(extension)) {
+      mediaType = 'video';
+    } else if (['.mp3', '.aac', '.ogg', '.m4a'].includes(extension)) {
+      mediaType = 'audio';
+    } else {
+      mediaType = 'document';
+    }
+    
+    return {
+      path: filePath,
+      media: await client.uploadMedia(buffer, mediaType)
+    };
+  });
+  
+  return Promise.all(uploadPromises);
+};
+```
+
+### Smart Media Sending
+
+```typescript
+const sendSmartMedia = async (phone: string, mediaPath: string, caption?: string) => {
+  const buffer = fs.readFileSync(mediaPath);
+  const extension = path.extname(mediaPath).toLowerCase();
+  const filename = path.basename(mediaPath);
+  
+  // Determine media type and send accordingly
+  if (['.jpg', '.jpeg', '.png', '.webp'].includes(extension)) {
+    const media = await client.uploadMedia(buffer, 'image');
+    await client.sendImage(phone, { id: media.id, caption });
+  } 
+  else if (['.mp4', '.3gp'].includes(extension)) {
+    const media = await client.uploadMedia(buffer, 'video');
+    await client.sendVideo(phone, { id: media.id, caption });
+  } 
+  else if (['.mp3', '.aac', '.ogg', '.m4a', '.amr'].includes(extension)) {
+    const media = await client.uploadMedia(buffer, 'audio');
+    await client.sendAudio(phone, { id: media.id });
+  } 
+  else {
+    const media = await client.uploadMedia(buffer, 'document');
+    await client.sendDocument(phone, { 
+      id: media.id, 
+      filename, 
+      caption 
+    });
+  }
+};
+
+// Usage
+await sendSmartMedia('+573001234567', './report.pdf', 'Monthly report');
+await sendSmartMedia('+573001234567', './photo.jpg', 'Team photo');
+```
+
+### Media with Reply Context
+
+```typescript
+// Reply to a message with media
+await client.sendImage(
+  '+573001234567',
+  {
+    link: 'https://example.com/response.jpg',
+    caption: 'Here is the image you requested!'
+  },
+  {
+    replyToMessageId: 'original_message_id'
+  }
+);
+```
+
+## Error Handling
+
+Handle media-specific errors:
+
+```typescript
+import { MediaProcessingError, WhatsAppApiError } from 'whatsapp-client-sdk';
+
+try {
+  const media = await client.uploadMedia(largeBuffer, 'image');
+  await client.sendImage(phone, { id: media.id });
+} catch (error) {
+  if (error instanceof MediaProcessingError) {
+    console.error('Media error:', error.message);
+    if (error.mediaId) {
+      console.error('Failed media ID:', error.mediaId);
+    }
+  } else if (error instanceof WhatsAppApiError) {
+    console.error('API error:', error.details);
+  }
+}
+```
+
+## Best Practices
+
+### 1. File Size Optimization
+
+```typescript
+// Check file size before upload
+const checkFileSize = (buffer: Buffer, type: string) => {
+  const limits = {
+    image: 5 * 1024 * 1024,      // 5MB
+    video: 16 * 1024 * 1024,     // 16MB  
+    audio: 16 * 1024 * 1024,     // 16MB
+    document: 100 * 1024 * 1024  // 100MB
+  };
+  
+  if (buffer.length > limits[type]) {
+    throw new Error(`File too large for ${type}: ${buffer.length} bytes`);
+  }
+};
+```
+
+### 2. Media ID Caching
+
+```typescript
+// Cache media IDs to avoid re-uploading
+const mediaCache = new Map<string, string>();
+
+const getCachedMedia = async (filePath: string, type: string) => {
+  if (mediaCache.has(filePath)) {
+    return mediaCache.get(filePath);
+  }
+  
+  const buffer = fs.readFileSync(filePath);
+  const media = await client.uploadMedia(buffer, type as any);
+  
+  mediaCache.set(filePath, media.id);
+  return media.id;
+};
+```
+
+### 3. Progressive Media Loading
+
+```typescript
+// Send thumbnail first, then full media
+const sendProgressiveImage = async (phone: string, imagePath: string) => {
+  // Send low-res thumbnail first
+  const thumbnailId = await getCachedMedia('./thumbnails/thumb.jpg', 'image');
+  await client.sendImage(phone, { 
+    id: thumbnailId, 
+    caption: 'Loading full image...' 
+  });
+  
+  // Then send full resolution
+  const fullImageId = await getCachedMedia(imagePath, 'image');
+  await client.sendImage(phone, { 
+    id: fullImageId, 
+    caption: 'High resolution image' 
+  });
+};
+```
+
+Media messages are essential for rich communication experiences. Use them to share visual information, documents, and audio content with your users.

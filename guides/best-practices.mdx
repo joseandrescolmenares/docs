@@ -1,0 +1,736 @@
+---
+title: "Best Practices"
+description: "Production-ready patterns, performance optimization, and security best practices for the WhatsApp Client SDK"
+---
+
+# Best Practices
+
+This guide covers production-ready patterns, performance optimization, and security best practices for building robust WhatsApp integrations.
+
+## 🏗️ Architecture Best Practices
+
+### 1. Client Initialization
+
+**✅ Good: Singleton Pattern**
+```typescript
+// config/whatsapp.ts
+let client: WhatsAppClient | null = null;
+
+export function getWhatsAppClient(): WhatsAppClient {
+  if (!client) {
+    client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+      timeout: 60000,
+      webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN,
+    });
+  }
+  return client;
+}
+```
+
+**❌ Avoid: Multiple Instances**
+```typescript
+// Don't create multiple instances
+function sendMessage() {
+  const client = new WhatsAppClient(config); // Creates new instance every time
+  return client.sendText(to, message);
+}
+```
+
+### 2. Environment Configuration
+
+**✅ Good: Environment-specific Configs**
+```typescript
+const config = {
+  development: {
+    accessToken: process.env.WHATSAPP_DEV_TOKEN!,
+    phoneNumberId: process.env.WHATSAPP_DEV_PHONE_ID!,
+    timeout: 10000,
+  },
+  production: {
+    accessToken: process.env.WHATSAPP_PROD_TOKEN!,
+    phoneNumberId: process.env.WHATSAPP_PROD_PHONE_ID!,
+    timeout: 60000,
+    businessId: process.env.WHATSAPP_BUSINESS_ID!,
+  }
+};
+
+const environment = process.env.NODE_ENV as keyof typeof config;
+const client = new WhatsAppClient(config[environment]);
+```
+
+## 📱 Message Best Practices
+
+### 1. Message Content Guidelines
+
+**✅ Good: Clear and Concise**
+```typescript
+// Clear, actionable message
+await client.sendText(to, 
+  '📦 Your order #12345 has shipped!\n\n' +
+  '🚚 Tracking: ABC123\n' +
+  '📅 Expected: March 15\n\n' +
+  'Track: https://track.example.com/ABC123'
+);
+```
+
+**❌ Avoid: Verbose Messages**
+```typescript
+// Too much information
+await client.sendText(to,
+  'We are pleased to inform you that your order number 12345 which was placed on March 10th, 2024...'
+);
+```
+
+### 2. Message Formatting
+
+**✅ Good: Structured Content**
+```typescript
+const formatOrderUpdate = (order: Order) => [
+  '📦 Order Update',
+  '',
+  `Order #: ${order.id}`,
+  `Status: ${order.status}`,
+  `Items: ${order.items.length}`,
+  '',
+  '📍 Shipping Address:',
+  order.shippingAddress.split('\n').map(line => `  ${line}`).join('\n'),
+  '',
+  `💰 Total: $${order.total}`,
+  '',
+  'Questions? Reply to this message.'
+].join('\n');
+
+await client.sendText(to, formatOrderUpdate(order));
+```
+
+### 3. Interactive Message Design
+
+**✅ Good: Logical Button Groups**
+```typescript
+// Clear, related actions
+await client.sendButtons(to, 'Order #12345 - What would you like to do?', [
+  { id: 'track', title: '📦 Track' },
+  { id: 'modify', title: '✏️ Modify' },
+  { id: 'support', title: '💬 Help' }
+], {
+  header: { type: 'text', text: 'Order Management' },
+  footer: 'Choose an action'
+});
+```
+
+**❌ Avoid: Unrelated Options**
+```typescript
+// Confusing, unrelated buttons
+await client.sendButtons(to, 'Your order shipped', [
+  { id: 'weather', title: 'Weather' },
+  { id: 'news', title: 'News' },
+  { id: 'games', title: 'Games' }
+]);
+```
+
+## ⚡ Performance Optimization
+
+### 1. Media Management
+
+**✅ Good: Upload Once, Reuse**
+```typescript
+class MediaManager {
+  private mediaCache = new Map<string, string>();
+  
+  async getOrUploadMedia(filePath: string, type: MediaType): Promise<string> {
+    const cacheKey = `${filePath}-${type}`;
+    
+    if (this.mediaCache.has(cacheKey)) {
+      return this.mediaCache.get(cacheKey)!;
+    }
+    
+    const buffer = fs.readFileSync(filePath);
+    const response = await client.uploadMedia(buffer, type);
+    
+    this.mediaCache.set(cacheKey, response.id);
+    return response.id;
+  }
+  
+  async sendCachedImage(to: string, filePath: string, caption?: string) {
+    const mediaId = await this.getOrUploadMedia(filePath, 'image');
+    return client.sendImage(to, { id: mediaId, caption });
+  }
+}
+```
+
+### 2. Batch Operations
+
+**✅ Good: Parallel Processing with Limits**
+```typescript
+async function sendBulkMessages(recipients: string[], message: string) {
+  const BATCH_SIZE = 10; // Process 10 at a time
+  
+  for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+    const batch = recipients.slice(i, i + BATCH_SIZE);
+    
+    await Promise.allSettled(
+      batch.map(async (recipient) => {
+        try {
+          await client.sendText(recipient, message);
+          console.log(`✅ Sent to ${recipient}`);
+        } catch (error) {
+          console.error(`❌ Failed to send to ${recipient}:`, error.message);
+        }
+      })
+    );
+    
+    // Add delay between batches to respect rate limits
+    if (i + BATCH_SIZE < recipients.length) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+}
+```
+
+### 3. Connection Management
+
+**✅ Good: Connection Testing**
+```typescript
+class WhatsAppService {
+  private client: WhatsAppClient;
+  private lastHealthCheck = 0;
+  private readonly HEALTH_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  
+  constructor() {
+    this.client = getWhatsAppClient();
+  }
+  
+  async ensureConnection(): Promise<boolean> {
+    const now = Date.now();
+    
+    if (now - this.lastHealthCheck > this.HEALTH_CHECK_INTERVAL) {
+      try {
+        const isConnected = await this.client.testConnection();
+        this.lastHealthCheck = now;
+        
+        if (!isConnected) {
+          console.error('❌ WhatsApp API connection failed');
+          // Trigger alert/notification
+          return false;
+        }
+        
+        console.log('✅ WhatsApp API connection healthy');
+        return true;
+      } catch (error) {
+        console.error('❌ Health check failed:', error.message);
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  async sendMessage(to: string, message: string): Promise<void> {
+    if (!(await this.ensureConnection())) {
+      throw new Error('WhatsApp API connection unavailable');
+    }
+    
+    return this.client.sendText(to, message);
+  }
+}
+```
+
+## 🔒 Security Best Practices
+
+### 1. Credential Management
+
+**✅ Good: Secure Configuration**
+```typescript
+// Use environment variables
+const config = {
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN!,
+};
+
+// Validate required environment variables
+function validateEnvironment() {
+  const required = ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID'];
+  const missing = required.filter(key => !process.env[key]);
+  
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
+
+validateEnvironment();
+```
+
+**❌ Avoid: Hardcoded Credentials**
+```typescript
+// Never do this!
+const client = new WhatsAppClient({
+  accessToken: 'EAABsBCS...', // Hardcoded token
+  phoneNumberId: '123456789',
+});
+```
+
+### 2. Webhook Security
+
+**✅ Good: Proper Webhook Verification**
+```typescript
+const webhookProcessor = client.createWebhookProcessor({
+  verifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN!, // Always verify
+  
+  onTextMessage: async (message) => {
+    // Message is verified by processor
+    await handleSecureMessage(message);
+  },
+  
+  onError: async (error, message) => {
+    if (error.name === 'WebhookVerificationError') {
+      console.error('🚨 Webhook verification failed:', error.message);
+      // Alert security team
+      await notifySecurityTeam(error);
+    }
+  }
+});
+```
+
+### 3. Input Validation and Sanitization
+
+**✅ Good: Validate All Inputs**
+```typescript
+import { validatePhoneNumber, sanitizeText } from 'whatsapp-client-sdk';
+
+function sendUserMessage(to: string, message: string) {
+  // Validate phone number
+  if (!validatePhoneNumber(to)) {
+    throw new Error('Invalid phone number format');
+  }
+  
+  // Sanitize message content
+  const cleanMessage = sanitizeText(message);
+  
+  // Check message length
+  if (cleanMessage.length > 4096) {
+    throw new Error('Message too long');
+  }
+  
+  // Check for forbidden content
+  if (containsForbiddenContent(cleanMessage)) {
+    throw new Error('Message contains forbidden content');
+  }
+  
+  return client.sendText(to, cleanMessage);
+}
+
+function containsForbiddenContent(text: string): boolean {
+  const forbiddenPatterns = [
+    /spam/i,
+    /phishing/i,
+    /malware/i,
+    // Add more patterns
+  ];
+  
+  return forbiddenPatterns.some(pattern => pattern.test(text));
+}
+```
+
+## 🛠️ Error Handling Patterns
+
+### 1. Comprehensive Error Handling
+
+**✅ Good: Specific Error Handling**
+```typescript
+async function robustMessageSend(to: string, message: string): Promise<void> {
+  try {
+    await client.sendText(to, message);
+    console.log('✅ Message sent successfully');
+    
+  } catch (error) {
+    if (error instanceof MessageValidationError) {
+      console.error('❌ Message validation failed:', {
+        field: error.field,
+        message: error.message,
+        value: error.value
+      });
+      
+      // Handle specific validation errors
+      if (error.field === 'to') {
+        throw new Error('Please provide a valid phone number with country code');
+      } else if (error.field === 'text.body') {
+        throw new Error('Message content is invalid or too long');
+      }
+      
+    } else if (error instanceof WhatsAppApiError) {
+      console.error('❌ WhatsApp API error:', {
+        status: error.status,
+        code: error.code,
+        details: error.details
+      });
+      
+      // Handle specific API errors
+      switch (error.code) {
+        case 131:
+          throw new Error('The phone number is not registered with WhatsApp');
+        case 132:
+          throw new Error('Message could not be delivered to this number');
+        case 133:
+          throw new Error('Message content violates WhatsApp policies');
+        default:
+          throw new Error(`WhatsApp service error: ${error.details}`);
+      }
+      
+    } else if (error instanceof RateLimitError) {
+      console.warn(`⏰ Rate limited. Retrying in ${error.retryAfter} seconds`);
+      
+      // Implement exponential backoff
+      await new Promise(resolve => setTimeout(resolve, error.retryAfter * 1000));
+      return robustMessageSend(to, message); // Retry once
+      
+    } else {
+      console.error('💥 Unexpected error:', error);
+      throw new Error('An unexpected error occurred while sending the message');
+    }
+  }
+}
+```
+
+### 2. Retry Logic with Circuit Breaker
+
+**✅ Good: Smart Retry Strategy**
+```typescript
+class CircuitBreaker {
+  private failures = 0;
+  private lastFailTime = 0;
+  private readonly maxFailures = 5;
+  private readonly resetTimeout = 60000; // 1 minute
+  
+  async execute<T>(operation: () => Promise<T>): Promise<T> {
+    if (this.isOpen()) {
+      throw new Error('Circuit breaker is open');
+    }
+    
+    try {
+      const result = await operation();
+      this.onSuccess();
+      return result;
+    } catch (error) {
+      this.onFailure();
+      throw error;
+    }
+  }
+  
+  private isOpen(): boolean {
+    return this.failures >= this.maxFailures && 
+           Date.now() - this.lastFailTime < this.resetTimeout;
+  }
+  
+  private onSuccess(): void {
+    this.failures = 0;
+  }
+  
+  private onFailure(): void {
+    this.failures++;
+    this.lastFailTime = Date.now();
+  }
+}
+
+const circuitBreaker = new CircuitBreaker();
+
+async function sendWithCircuitBreaker(to: string, message: string) {
+  return circuitBreaker.execute(() => client.sendText(to, message));
+}
+```
+
+## 📊 Monitoring and Logging
+
+### 1. Structured Logging
+
+**✅ Good: Comprehensive Logging**
+```typescript
+interface LogContext {
+  operation: string;
+  recipient?: string;
+  messageId?: string;
+  duration?: number;
+  error?: any;
+}
+
+class Logger {
+  static info(message: string, context: LogContext = {}) {
+    console.log(JSON.stringify({
+      level: 'info',
+      message,
+      timestamp: new Date().toISOString(),
+      ...context
+    }));
+  }
+  
+  static error(message: string, context: LogContext = {}) {
+    console.error(JSON.stringify({
+      level: 'error',
+      message,
+      timestamp: new Date().toISOString(),
+      ...context
+    }));
+  }
+}
+
+async function loggedSendText(to: string, text: string): Promise<MessageResponse> {
+  const startTime = Date.now();
+  const context: LogContext = { operation: 'sendText', recipient: to };
+  
+  try {
+    Logger.info('Sending text message', context);
+    
+    const response = await client.sendText(to, text);
+    
+    Logger.info('Text message sent successfully', {
+      ...context,
+      messageId: response.messages[0].id,
+      duration: Date.now() - startTime
+    });
+    
+    return response;
+    
+  } catch (error) {
+    Logger.error('Failed to send text message', {
+      ...context,
+      duration: Date.now() - startTime,
+      error: {
+        name: error.name,
+        message: error.message,
+        ...(error instanceof WhatsAppApiError && {
+          code: error.code,
+          status: error.status
+        })
+      }
+    });
+    
+    throw error;
+  }
+}
+```
+
+### 2. Metrics Collection
+
+**✅ Good: Business Metrics**
+```typescript
+class MetricsCollector {
+  private static metrics = {
+    messagesSent: 0,
+    messagesDelivered: 0,
+    messagesFailed: 0,
+    apiErrors: new Map<number, number>(),
+    averageResponseTime: 0,
+    responseTimes: [] as number[]
+  };
+  
+  static recordMessageSent(): void {
+    this.metrics.messagesSent++;
+  }
+  
+  static recordMessageDelivered(): void {
+    this.metrics.messagesDelivered++;
+  }
+  
+  static recordMessageFailed(errorCode?: number): void {
+    this.metrics.messagesFailed++;
+    
+    if (errorCode) {
+      const current = this.metrics.apiErrors.get(errorCode) || 0;
+      this.metrics.apiErrors.set(errorCode, current + 1);
+    }
+  }
+  
+  static recordResponseTime(duration: number): void {
+    this.metrics.responseTimes.push(duration);
+    
+    // Keep only last 100 measurements
+    if (this.metrics.responseTimes.length > 100) {
+      this.metrics.responseTimes.shift();
+    }
+    
+    // Update average
+    this.metrics.averageResponseTime = 
+      this.metrics.responseTimes.reduce((a, b) => a + b) / 
+      this.metrics.responseTimes.length;
+  }
+  
+  static getMetrics() {
+    return {
+      ...this.metrics,
+      deliveryRate: this.metrics.messagesDelivered / this.metrics.messagesSent,
+      errorRate: this.metrics.messagesFailed / this.metrics.messagesSent
+    };
+  }
+}
+```
+
+## 🔄 Webhook Best Practices
+
+### 1. Idempotent Processing
+
+**✅ Good: Handle Duplicate Messages**
+```typescript
+const processedMessages = new Set<string>();
+
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    // Check if message already processed
+    if (processedMessages.has(message.id)) {
+      console.log('Duplicate message, skipping:', message.id);
+      return;
+    }
+    
+    try {
+      await processMessage(message);
+      processedMessages.add(message.id);
+      
+      // Clean up old message IDs (keep last 1000)
+      if (processedMessages.size > 1000) {
+        const oldestId = processedMessages.values().next().value;
+        processedMessages.delete(oldestId);
+      }
+      
+    } catch (error) {
+      console.error('Error processing message:', error);
+      // Don't add to processed set on error, allow retry
+    }
+  }
+});
+```
+
+### 2. Async Processing
+
+**✅ Good: Quick Response with Background Processing**
+```typescript
+import Queue from 'bull';
+
+const messageQueue = new Queue('message processing');
+
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    // Quick acknowledgment
+    await client.sendText(message.from, '✅ Message received! Processing...');
+    
+    // Add to background queue
+    await messageQueue.add('processMessage', message);
+  }
+});
+
+// Background processor
+messageQueue.process('processMessage', async (job) => {
+  const message = job.data;
+  
+  try {
+    // Complex processing
+    const result = await complexMessageProcessing(message);
+    
+    // Send result back to user
+    await client.sendText(message.from, `✅ Processed: ${result}`);
+    
+  } catch (error) {
+    console.error('Background processing failed:', error);
+    await client.sendText(
+      message.from, 
+      '❌ Processing failed. Our team has been notified.'
+    );
+  }
+});
+```
+
+## 📈 Scalability Patterns
+
+### 1. Horizontal Scaling
+
+**✅ Good: Stateless Design**
+```typescript
+// Use external storage instead of in-memory state
+import Redis from 'ioredis';
+
+const redis = new Redis(process.env.REDIS_URL!);
+
+class ScalableConversationManager {
+  async getConversationState(userId: string): Promise<any> {
+    const state = await redis.get(`conversation:${userId}`);
+    return state ? JSON.parse(state) : { step: 'start' };
+  }
+  
+  async setConversationState(userId: string, state: any): Promise<void> {
+    await redis.setex(`conversation:${userId}`, 3600, JSON.stringify(state));
+  }
+  
+  async clearConversationState(userId: string): Promise<void> {
+    await redis.del(`conversation:${userId}`);
+  }
+}
+
+const conversationManager = new ScalableConversationManager();
+
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    const state = await conversationManager.getConversationState(message.from);
+    
+    // Process based on state
+    const newState = await processConversationStep(message, state);
+    
+    if (newState.completed) {
+      await conversationManager.clearConversationState(message.from);
+    } else {
+      await conversationManager.setConversationState(message.from, newState);
+    }
+  }
+});
+```
+
+### 2. Load Balancing
+
+**✅ Good: Multiple Webhook Endpoints**
+```typescript
+// webhook-1.js, webhook-2.js, etc.
+const instanceId = process.env.INSTANCE_ID || 'default';
+
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    console.log(`Processing on instance ${instanceId}:`, message.id);
+    await processMessage(message);
+  },
+  
+  onError: async (error, message) => {
+    console.error(`Error on instance ${instanceId}:`, error.message);
+  }
+});
+```
+
+## 🎯 Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Production Deployment"
+    icon="rocket"
+    href="/guides/production-deployment"
+  >
+    Deploy your WhatsApp integration to production
+  </Card>
+  <Card
+    title="Troubleshooting"
+    icon="wrench"
+    href="/guides/troubleshooting"
+  >
+    Common issues and solutions
+  </Card>
+  <Card
+    title="Framework Integration"
+    icon="layers"
+    href="/examples/framework-integration"
+  >
+    Specific integration patterns for different frameworks
+  </Card>
+  <Card
+    title="API Reference"
+    icon="book-open"
+    href="/api-reference/client"
+  >
+    Complete SDK API documentation
+  </Card>
+</CardGroup>

@@ -1,0 +1,833 @@
+---
+title: "Validation System"
+description: "Comprehensive input validation, data sanitization, and constraint checking in the WhatsApp Client SDK"
+---
+
+# Validation System
+
+The WhatsApp Client SDK provides comprehensive validation at multiple layers to ensure data integrity, API compliance, and security. The validation system prevents common errors before they reach the WhatsApp API.
+
+## Validation Layers
+
+### 1. Configuration Validation
+### 2. Message Content Validation  
+### 3. Media File Validation
+### 4. Phone Number Validation
+### 5. Template Parameter Validation
+
+## Configuration Validation
+
+Ensures the client is properly configured before use.
+
+### validateConfig Function
+
+```typescript
+export function validateConfig(config: WhatsAppConfig): void {
+  const missingFields: string[] = [];
+  
+  // Required field validation
+  if (!config.accessToken) missingFields.push('accessToken');
+  if (!config.phoneNumberId) missingFields.push('phoneNumberId');
+  
+  if (missingFields.length > 0) {
+    throw new ConfigurationError(
+      'Missing required configuration fields',
+      missingFields
+    );
+  }
+  
+  // Format validation
+  if (config.accessToken && !isValidAccessToken(config.accessToken)) {
+    throw new ConfigurationError('Invalid access token format');
+  }
+  
+  if (config.phoneNumberId && !isValidPhoneNumberId(config.phoneNumberId)) {
+    throw new ConfigurationError('Invalid phone number ID format');
+  }
+  
+  // Optional field validation
+  if (config.timeout && (config.timeout < 1000 || config.timeout > 300000)) {
+    throw new ConfigurationError('Timeout must be between 1000ms and 300000ms');
+  }
+  
+  if (config.apiVersion && !isValidApiVersion(config.apiVersion)) {
+    throw new ConfigurationError('Unsupported API version');
+  }
+}
+
+function isValidAccessToken(token: string): boolean {
+  // Meta access tokens are typically base64-encoded strings
+  return /^[A-Za-z0-9_-]+$/.test(token) && token.length > 20;
+}
+
+function isValidPhoneNumberId(id: string): boolean {
+  // Phone number IDs are numeric strings
+  return /^\d+$/.test(id) && id.length > 10;
+}
+
+function isValidApiVersion(version: string): boolean {
+  const supportedVersions = ['v22.0', 'v23.0'];
+  return supportedVersions.includes(version);
+}
+```
+
+### Usage Example
+
+```typescript
+try {
+  const client = new WhatsAppClient({
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+    timeout: 45000,
+    apiVersion: 'v23.0'
+  });
+} catch (error) {
+  if (error instanceof ConfigurationError) {
+    console.error('Configuration Error:', error.message);
+    if (error.missingFields) {
+      console.error('Missing fields:', error.missingFields);
+    }
+  }
+}
+```
+
+## Phone Number Validation
+
+Validates international phone number formats according to E.164 standard.
+
+### validatePhoneNumber Function
+
+```typescript
+export function validatePhoneNumber(phoneNumber: string): boolean {
+  // Remove whitespace and formatting
+  const cleaned = phoneNumber.replace(/[\s\-\(\)\.]/g, '');
+  
+  // E.164 format: +[1-9][0-14 digits]
+  const e164Regex = /^\+?[1-9]\d{1,14}$/;
+  
+  return e164Regex.test(cleaned);
+}
+
+export function formatPhoneNumber(phoneNumber: string): string {
+  const cleaned = phoneNumber.replace(/[^\d+]/g, '');
+  return cleaned.startsWith('+') ? cleaned : `+${cleaned}`;
+}
+
+export function validateAndFormatPhoneNumber(phoneNumber: string): string {
+  if (!phoneNumber) {
+    throw new MessageValidationError(
+      'Phone number is required',
+      'to'
+    );
+  }
+  
+  const formatted = formatPhoneNumber(phoneNumber);
+  
+  if (!validatePhoneNumber(formatted)) {
+    throw new MessageValidationError(
+      'Invalid phone number format. Must include country code.',
+      'to',
+      phoneNumber,
+      'E.164 format'
+    );
+  }
+  
+  return formatted;
+}
+```
+
+### Phone Number Examples
+
+<Tabs>
+  <Tab title="Valid Numbers">
+    ```typescript
+    // Valid international formats
+    validatePhoneNumber('+1234567890')    // ✅ US number
+    validatePhoneNumber('+4411223344')    // ✅ UK number  
+    validatePhoneNumber('+573001234567')  // ✅ Colombia number
+    validatePhoneNumber('+81901234567')   // ✅ Japan number
+    validatePhoneNumber('+4915123456789') // ✅ Germany number
+    
+    // Auto-formatting works
+    formatPhoneNumber('1234567890')       // Returns: '+1234567890'
+    formatPhoneNumber('(123) 456-7890')   // Returns: '+1234567890'
+    formatPhoneNumber('+1 (234) 567-890') // Returns: '+1234567890'
+    ```
+  </Tab>
+  <Tab title="Invalid Numbers">
+    ```typescript
+    // Invalid formats that will fail validation
+    validatePhoneNumber('123')           // ❌ Too short
+    validatePhoneNumber('+0123456789')   // ❌ Starts with 0
+    validatePhoneNumber('1234567890123456') // ❌ Too long
+    validatePhoneNumber('abc123456789')  // ❌ Contains letters
+    validatePhoneNumber('+123-456-789') // ❌ Hyphens (after cleaning)
+    ```
+  </Tab>
+</Tabs>
+
+## Message Content Validation
+
+Validates message content based on message type and WhatsApp API constraints.
+
+### Text Message Validation
+
+```typescript
+export function validateTextMessage(message: TextMessage): void {
+  if (!message.text?.body) {
+    throw new MessageValidationError(
+      'Text body is required',
+      'text.body'
+    );
+  }
+  
+  if (message.text.body.length === 0) {
+    throw new MessageValidationError(
+      'Text body cannot be empty',
+      'text.body'
+    );
+  }
+  
+  if (message.text.body.length > 4096) {
+    throw new MessageValidationError(
+      'Text exceeds 4096 characters limit',
+      'text.body',
+      message.text.body.length,
+      'max_length: 4096'
+    );
+  }
+  
+  // Check for potentially problematic content
+  if (containsOnlyWhitespace(message.text.body)) {
+    throw new MessageValidationError(
+      'Text body cannot contain only whitespace',
+      'text.body'
+    );
+  }
+}
+
+function containsOnlyWhitespace(text: string): boolean {
+  return /^\s*$/.test(text);
+}
+```
+
+### Interactive Message Validation
+
+```typescript
+export function validateInteractiveMessage(message: InteractiveMessage): void {
+  const interactive = message.interactive;
+  
+  if (!interactive.body?.text) {
+    throw new MessageValidationError(
+      'Interactive message body text is required',
+      'interactive.body.text'
+    );
+  }
+  
+  if (interactive.type === 'button') {
+    validateButtonMessage(interactive);
+  } else if (interactive.type === 'list') {
+    validateListMessage(interactive);
+  }
+}
+
+function validateButtonMessage(interactive: any): void {
+  const buttons = interactive.action?.buttons || [];
+  
+  if (buttons.length === 0) {
+    throw new MessageValidationError(
+      'At least one button is required',
+      'interactive.action.buttons'
+    );
+  }
+  
+  if (buttons.length > 3) {
+    throw new MessageValidationError(
+      'Maximum 3 buttons allowed',
+      'interactive.action.buttons',
+      buttons.length,
+      'max_buttons: 3'
+    );
+  }
+  
+  buttons.forEach((button: any, index: number) => {
+    if (!button.reply?.id) {
+      throw new MessageValidationError(
+        `Button ${index + 1} ID is required`,
+        `interactive.action.buttons[${index}].reply.id`
+      );
+    }
+    
+    if (!button.reply?.title) {
+      throw new MessageValidationError(
+        `Button ${index + 1} title is required`,
+        `interactive.action.buttons[${index}].reply.title`
+      );
+    }
+    
+    if (button.reply.title.length > 20) {
+      throw new MessageValidationError(
+        `Button ${index + 1} title exceeds 20 characters`,
+        `interactive.action.buttons[${index}].reply.title`,
+        button.reply.title.length,
+        'max_length: 20'
+      );
+    }
+    
+    if (button.reply.id.length > 256) {
+      throw new MessageValidationError(
+        `Button ${index + 1} ID exceeds 256 characters`,
+        `interactive.action.buttons[${index}].reply.id`,
+        button.reply.id.length,
+        'max_length: 256'
+      );
+    }
+  });
+}
+
+function validateListMessage(interactive: any): void {
+  const sections = interactive.action?.sections || [];
+  
+  if (sections.length === 0) {
+    throw new MessageValidationError(
+      'At least one section is required',
+      'interactive.action.sections'
+    );
+  }
+  
+  if (sections.length > 10) {
+    throw new MessageValidationError(
+      'Maximum 10 sections allowed',
+      'interactive.action.sections',
+      sections.length,
+      'max_sections: 10'
+    );
+  }
+  
+  let totalRows = 0;
+  
+  sections.forEach((section: any, sectionIndex: number) => {
+    if (!section.title) {
+      throw new MessageValidationError(
+        `Section ${sectionIndex + 1} title is required`,
+        `interactive.action.sections[${sectionIndex}].title`
+      );
+    }
+    
+    if (section.title.length > 24) {
+      throw new MessageValidationError(
+        `Section ${sectionIndex + 1} title exceeds 24 characters`,
+        `interactive.action.sections[${sectionIndex}].title`,
+        section.title.length,
+        'max_length: 24'
+      );
+    }
+    
+    const rows = section.rows || [];
+    if (rows.length === 0) {
+      throw new MessageValidationError(
+        `Section ${sectionIndex + 1} must have at least one row`,
+        `interactive.action.sections[${sectionIndex}].rows`
+      );
+    }
+    
+    totalRows += rows.length;
+    
+    rows.forEach((row: any, rowIndex: number) => {
+      if (!row.id) {
+        throw new MessageValidationError(
+          `Section ${sectionIndex + 1}, row ${rowIndex + 1} ID is required`,
+          `interactive.action.sections[${sectionIndex}].rows[${rowIndex}].id`
+        );
+      }
+      
+      if (!row.title) {
+        throw new MessageValidationError(
+          `Section ${sectionIndex + 1}, row ${rowIndex + 1} title is required`,
+          `interactive.action.sections[${sectionIndex}].rows[${rowIndex}].title`
+        );
+      }
+      
+      if (row.title.length > 24) {
+        throw new MessageValidationError(
+          `Row title exceeds 24 characters`,
+          `interactive.action.sections[${sectionIndex}].rows[${rowIndex}].title`,
+          row.title.length,
+          'max_length: 24'
+        );
+      }
+      
+      if (row.description && row.description.length > 72) {
+        throw new MessageValidationError(
+          `Row description exceeds 72 characters`,
+          `interactive.action.sections[${sectionIndex}].rows[${rowIndex}].description`,
+          row.description.length,
+          'max_length: 72'
+        );
+      }
+    });
+  });
+  
+  if (totalRows > 10) {
+    throw new MessageValidationError(
+      'Maximum 10 total rows allowed across all sections',
+      'interactive.action.sections',
+      totalRows,
+      'max_total_rows: 10'
+    );
+  }
+}
+```
+
+## Media File Validation
+
+Validates media files based on type, size, and format constraints.
+
+### File Size Limits
+
+```typescript
+const MEDIA_SIZE_LIMITS = {
+  image: 5 * 1024 * 1024,      // 5MB
+  video: 16 * 1024 * 1024,     // 16MB
+  audio: 16 * 1024 * 1024,     // 16MB
+  document: 100 * 1024 * 1024, // 100MB
+  sticker: 500 * 1024          // 500KB
+} as const;
+
+const ALLOWED_MIME_TYPES = {
+  image: [
+    'image/jpeg',
+    'image/jpg', 
+    'image/png',
+    'image/webp'
+  ],
+  video: [
+    'video/mp4',
+    'video/3gpp',
+    'video/quicktime'
+  ],
+  audio: [
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/ogg',
+    'audio/wav',
+    'audio/aac',
+    'audio/amr'
+  ],
+  document: [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    'text/csv'
+  ],
+  sticker: [
+    'image/webp'
+  ]
+} as const;
+```
+
+### Media Validation Function
+
+```typescript
+export function validateMediaFile(
+  buffer: Buffer,
+  type: 'image' | 'video' | 'audio' | 'document' | 'sticker',
+  mimeType?: string
+): void {
+  // Size validation
+  const sizeLimit = MEDIA_SIZE_LIMITS[type];
+  if (buffer.length > sizeLimit) {
+    const sizeMB = (sizeLimit / 1024 / 1024).toFixed(1);
+    throw new MediaProcessingError(
+      `File size exceeds ${sizeMB}MB limit for ${type}`,
+      undefined,
+      'upload',
+      type
+    );
+  }
+  
+  // MIME type validation
+  if (mimeType) {
+    const allowedTypes = ALLOWED_MIME_TYPES[type];
+    if (!allowedTypes.includes(mimeType as any)) {
+      throw new MediaProcessingError(
+        `Unsupported ${type} format: ${mimeType}. Allowed: ${allowedTypes.join(', ')}`,
+        undefined,
+        'upload',
+        type
+      );
+    }
+  }
+  
+  // File signature validation
+  if (!isValidFileSignature(buffer, type)) {
+    throw new MediaProcessingError(
+      `Invalid ${type} file format`,
+      undefined,
+      'upload',
+      type
+    );
+  }
+}
+
+function isValidFileSignature(buffer: Buffer, type: string): boolean {
+  const signatures: Record<string, number[][]> = {
+    image: [
+      [0xFF, 0xD8, 0xFF],        // JPEG
+      [0x89, 0x50, 0x4E, 0x47],  // PNG
+      [0x52, 0x49, 0x46, 0x46]   // WebP (RIFF)
+    ],
+    video: [
+      [0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70], // MP4
+      [0x00, 0x00, 0x00, 0x14, 0x66, 0x74, 0x79, 0x70]  // MP4 variant
+    ],
+    audio: [
+      [0xFF, 0xFB],              // MP3
+      [0xFF, 0xF3],              // MP3 variant
+      [0xFF, 0xF2],              // MP3 variant
+      [0x4F, 0x67, 0x67, 0x53]   // OGG
+    ],
+    document: [
+      [0x25, 0x50, 0x44, 0x46],  // PDF
+      [0x50, 0x4B, 0x03, 0x04]   // ZIP-based (DOCX, XLSX)
+    ]
+  };
+  
+  const typeSignatures = signatures[type] || [];
+  
+  return typeSignatures.some(signature =>
+    signature.every((byte, index) => buffer[index] === byte)
+  );
+}
+```
+
+### Media Validation Usage
+
+```typescript
+// Validate uploaded file
+try {
+  const fileBuffer = fs.readFileSync('./image.jpg');
+  validateMediaFile(fileBuffer, 'image', 'image/jpeg');
+  
+  const mediaResponse = await client.uploadMedia(fileBuffer, 'image');
+  console.log('Upload successful:', mediaResponse.id);
+  
+} catch (error) {
+  if (error instanceof MediaProcessingError) {
+    console.error('Media validation failed:', error.message);
+    console.error('Operation:', error.operation);
+    console.error('File type:', error.fileType);
+  }
+}
+```
+
+## Template Parameter Validation
+
+Validates template message parameters against Meta's requirements.
+
+```typescript
+export function validateTemplateMessage(message: TemplateMessage): void {
+  if (!message.template.name) {
+    throw new MessageValidationError(
+      'Template name is required',
+      'template.name'
+    );
+  }
+  
+  if (!message.template.language?.code) {
+    throw new MessageValidationError(
+      'Template language code is required',
+      'template.language.code'
+    );
+  }
+  
+  if (!isValidLanguageCode(message.template.language.code)) {
+    throw new MessageValidationError(
+      'Invalid language code format',
+      'template.language.code',
+      message.template.language.code,
+      'format: en_US'
+    );
+  }
+  
+  // Validate components
+  const components = message.template.components || [];
+  components.forEach((component, index) => {
+    validateTemplateComponent(component, index);
+  });
+}
+
+function validateTemplateComponent(component: any, index: number): void {
+  const validTypes = ['header', 'body', 'button'];
+  if (!validTypes.includes(component.type)) {
+    throw new MessageValidationError(
+      `Invalid component type at index ${index}`,
+      `template.components[${index}].type`,
+      component.type,
+      `allowed: ${validTypes.join(', ')}`
+    );
+  }
+  
+  if (component.parameters) {
+    component.parameters.forEach((param: any, paramIndex: number) => {
+      validateTemplateParameter(param, index, paramIndex);
+    });
+  }
+}
+
+function validateTemplateParameter(param: any, componentIndex: number, paramIndex: number): void {
+  const validTypes = ['text', 'currency', 'date_time', 'image', 'document', 'video'];
+  
+  if (!validTypes.includes(param.type)) {
+    throw new MessageValidationError(
+      `Invalid parameter type`,
+      `template.components[${componentIndex}].parameters[${paramIndex}].type`,
+      param.type,
+      `allowed: ${validTypes.join(', ')}`
+    );
+  }
+  
+  // Type-specific validation
+  switch (param.type) {
+    case 'text':
+      if (!param.text) {
+        throw new MessageValidationError(
+          'Text parameter value is required',
+          `template.components[${componentIndex}].parameters[${paramIndex}].text`
+        );
+      }
+      break;
+      
+    case 'currency':
+      if (!param.currency?.fallback_value || !param.currency?.code) {
+        throw new MessageValidationError(
+          'Currency parameter requires fallback_value and code',
+          `template.components[${componentIndex}].parameters[${paramIndex}].currency`
+        );
+      }
+      break;
+      
+    case 'image':
+    case 'document':
+    case 'video':
+      if (!param[param.type]?.id && !param[param.type]?.link) {
+        throw new MessageValidationError(
+          `${param.type} parameter requires either id or link`,
+          `template.components[${componentIndex}].parameters[${paramIndex}].${param.type}`
+        );
+      }
+      break;
+  }
+}
+
+function isValidLanguageCode(code: string): boolean {
+  // Language codes are in format: en_US, es_ES, pt_BR, etc.
+  return /^[a-z]{2}_[A-Z]{2}$/.test(code);
+}
+```
+
+## Custom Validation Rules
+
+You can extend the validation system with custom rules:
+
+```typescript
+interface ValidationRule<T> {
+  name: string;
+  validate: (value: T) => boolean;
+  message: string;
+}
+
+class CustomValidator {
+  private rules: Map<string, ValidationRule<any>> = new Map();
+  
+  addRule<T>(rule: ValidationRule<T>): void {
+    this.rules.set(rule.name, rule);
+  }
+  
+  validate<T>(ruleName: string, value: T, field: string): void {
+    const rule = this.rules.get(ruleName);
+    if (!rule) {
+      throw new Error(`Validation rule '${ruleName}' not found`);
+    }
+    
+    if (!rule.validate(value)) {
+      throw new MessageValidationError(rule.message, field, value);
+    }
+  }
+}
+
+// Usage
+const validator = new CustomValidator();
+
+// Add custom rule for business hours
+validator.addRule({
+  name: 'businessHours',
+  validate: (timestamp: number) => {
+    const hour = new Date(timestamp).getHours();
+    return hour >= 9 && hour <= 17; // 9 AM to 5 PM
+  },
+  message: 'Messages can only be sent during business hours (9 AM - 5 PM)'
+});
+
+// Use custom validation
+try {
+  validator.validate('businessHours', Date.now(), 'timestamp');
+  await client.sendText(to, message);
+} catch (error) {
+  if (error instanceof MessageValidationError) {
+    console.error('Custom validation failed:', error.message);
+  }
+}
+```
+
+## Validation Utilities
+
+### Data Sanitization
+
+```typescript
+export function sanitizeText(text: string): string {
+  return text
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control characters
+    .replace(/\s+/g, ' ')                              // Normalize whitespace
+    .trim();                                           // Remove leading/trailing space
+}
+
+export function sanitizePhoneNumber(phoneNumber: string): string {
+  return phoneNumber
+    .replace(/[^\d+]/g, '')                           // Keep only digits and +
+    .replace(/^00/, '+')                              // Convert 00 prefix to +
+    .replace(/^\+{2,}/, '+');                         // Remove duplicate + signs
+}
+
+export function sanitizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    // Only allow HTTP and HTTPS
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('Invalid protocol');
+    }
+    return parsed.toString();
+  } catch {
+    throw new MessageValidationError('Invalid URL format', 'url', url);
+  }
+}
+```
+
+### Validation Helpers
+
+```typescript
+export function isValidUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+export function isValidDate(dateString: string): boolean {
+  const date = new Date(dateString);
+  return !isNaN(date.getTime());
+}
+
+export function isWithinLength(text: string, maxLength: number): boolean {
+  return text.length <= maxLength;
+}
+
+export function containsNoForbiddenContent(text: string): boolean {
+  const forbiddenPatterns = [
+    /spam/i,
+    /phishing/i,
+    /malware/i
+    // Add more patterns as needed
+  ];
+  
+  return !forbiddenPatterns.some(pattern => pattern.test(text));
+}
+```
+
+## Best Practices
+
+### 1. Validate Early and Often
+
+```typescript
+// ✅ Good: Validate before processing
+function sendMessage(to: string, message: string) {
+  // Validate immediately
+  const validatedTo = validateAndFormatPhoneNumber(to);
+  const sanitizedMessage = sanitizeText(message);
+  
+  // Then proceed with sending
+  return client.sendText(validatedTo, sanitizedMessage);
+}
+```
+
+### 2. Provide Clear Error Messages
+
+```typescript
+// ✅ Good: Specific, actionable error messages
+if (text.length > 4096) {
+  throw new MessageValidationError(
+    `Message is ${text.length} characters long. Maximum allowed is 4096 characters.`,
+    'text.body',
+    text.length,
+    'max_length: 4096'
+  );
+}
+```
+
+### 3. Use Type Guards for Validation
+
+```typescript
+function isValidTextMessage(message: any): message is TextMessage {
+  return (
+    message &&
+    message.type === 'text' &&
+    message.text &&
+    typeof message.text.body === 'string' &&
+    message.text.body.length > 0 &&
+    message.text.body.length <= 4096
+  );
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Message Types"
+    icon="message"
+    href="/messages/overview"
+  >
+    Learn about validating specific message types
+  </Card>
+  <Card
+    title="Error Handling"
+    icon="shield"
+    href="/core-concepts/errors"
+  >
+    Handle validation errors gracefully
+  </Card>
+  <Card
+    title="Best Practices"
+    icon="lightbulb"
+    href="/guides/best-practices"
+  >
+    Production validation patterns and strategies
+  </Card>
+  <Card
+    title="API Reference"
+    icon="book-open"
+    href="/api-reference/utilities"
+  >
+    Complete validation function reference
+  </Card>
+</CardGroup>
