@@ -1,0 +1,751 @@
+---
+title: "Framework Integration Guide"
+description: "Complete integration examples for Express, Next.js, NestJS, Fastify, and AWS Lambda"
+---
+
+## Framework-Specific Examples
+
+This guide shows how to integrate the WhatsApp Client SDK webhooks with popular Node.js frameworks.
+
+## NestJS Integration
+
+<Info>
+NestJS is a progressive Node.js framework for building efficient, reliable and scalable server-side applications with TypeScript.
+</Info>
+
+### Complete NestJS Implementation
+
+#### 1. Service Layer (`webhook.service.ts`)
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  ProcessedIncomingMessage,
+  WhatsAppClient,
+  WebhookProcessorResult,
+} from 'whatsapp-client-sdk';
+
+@Injectable()
+export class WebhookService {
+  private client: WhatsAppClient;
+  private webhookProcessor: any;
+
+  constructor(private configService: ConfigService) {
+    this.client = new WhatsAppClient({
+      accessToken: this.configService.get<string>('WHATSAPP_ACCESS_TOKEN')!,
+      phoneNumberId: this.configService.get<string>(
+        'WHATSAPP_PHONE_NUMBER_ID',
+      )!,
+      webhookVerifyToken: this.configService.get<string>(
+        'WHATSAPP_WEBHOOK_TOKEN',
+      )!,
+      baseUrl: this.configService.get<string>(
+        'WHATSAPP_BASE_URL',
+        'https://graph.facebook.com',
+      ),
+      apiVersion: this.configService.get<string>(
+        'WHATSAPP_API_VERSION',
+        'v23.0',
+      ),
+      timeout: this.configService.get<number>('WHATSAPP_TIMEOUT', 30000),
+      businessId: this.configService.get<string>('WHATSAPP_BUSINESS_ID'),
+    });
+
+    this.webhookProcessor = this.client.createWebhookProcessor({
+      onTextMessage: async (
+        message: ProcessedIncomingMessage & { text: string },
+      ) => {
+        console.log(`Text from ${message.from}: ${message.text}`);
+        await this.handleTextMessage(message);
+      },
+
+      onButtonClick: async (
+        message: ProcessedIncomingMessage & { interactive: any },
+      ) => {
+        console.log(`Button clicked: ${message.interactive.button_id}`);
+        await this.handleButtonClick(message);
+      },
+
+      onListSelect: async (
+        message: ProcessedIncomingMessage & { interactive: any },
+      ) => {
+        console.log(`List selected: ${message.interactive.list_id}`);
+        await this.handleListSelect(message);
+      },
+
+      onImageMessage: async (
+        message: ProcessedIncomingMessage & { media: any },
+      ) => {
+        console.log(`Image received from ${message.from}`);
+        await this.handleMediaMessage(message, 'image');
+      },
+
+      onDocumentMessage: async (
+        message: ProcessedIncomingMessage & { media: any },
+      ) => {
+        console.log(`Document received from ${message.from}`);
+        await this.handleMediaMessage(message, 'document');
+      },
+
+      onError: async (error: Error, message?: ProcessedIncomingMessage) => {
+        console.error('Webhook processing error:', error.message);
+        if (message) {
+          console.error('Error occurred with message from:', message.from);
+          await this.handleError(error, message);
+        }
+      },
+    });
+  }
+
+  async processWebhook(
+    body: any,
+    query?: any,
+  ): Promise<WebhookProcessorResult> {
+    return await this.webhookProcessor.processWebhook(body, query);
+  }
+
+  private async handleTextMessage(
+    message: ProcessedIncomingMessage & { text: string },
+  ) {
+    const text = message.text.toLowerCase();
+
+    if (text.includes('hello') || text.includes('hi')) {
+      await this.client.sendText(
+        message.from,
+        '👋 Hello! Welcome to our service. How can I help you today?'
+      );
+    } else if (text.includes('help')) {
+      await this.client.sendButtons(
+        message.from,
+        'How can I assist you?',
+        [
+          { id: 'support', title: '🛟 Get Support' },
+          { id: 'info', title: 'ℹ️ Information' },
+          { id: 'contact', title: '📞 Contact Us' },
+        ],
+        {
+          header: { type: 'text', text: '🤝 Customer Service' },
+          footer: 'Choose an option below'
+        }
+      );
+    } else if (text.includes('menu') || text.includes('options')) {
+      await this.client.sendList(
+        message.from,
+        'Here are our available services:',
+        'View Services',
+        [
+          {
+            title: 'Main Services',
+            rows: [
+              { id: 'technical', title: 'Technical Support', description: 'Get help with technical issues' },
+              { id: 'billing', title: 'Billing Support', description: 'Questions about your account' },
+              { id: 'general', title: 'General Inquiry', description: 'Other questions or feedback' },
+            ]
+          }
+        ]
+      );
+    } else {
+      await this.client.sendText(
+        message.from,
+        `Thank you for your message: "${message.text}"\n\nOur team will respond shortly. Type "help" for immediate assistance.`
+      );
+    }
+  }
+
+  private async handleButtonClick(
+    message: ProcessedIncomingMessage & { interactive: any },
+  ) {
+    const buttonId = message.interactive.button_id;
+
+    switch (buttonId) {
+      case 'support':
+        await this.client.sendText(
+          message.from,
+          '🛟 **Technical Support**\n\n' +
+          'Our support team is here to help! Please describe your issue and we\'ll get back to you within 2 hours.\n\n' +
+          'For urgent issues, call: +1-800-555-HELP'
+        );
+        break;
+
+      case 'info':
+        await this.client.sendText(
+          message.from,
+          'ℹ️ **About Our Service**\n\n' +
+          '• 24/7 Customer Support\n' +
+          '• Enterprise-grade Security\n' +
+          '• 99.9% Uptime Guarantee\n' +
+          '• Global Infrastructure\n\n' +
+          'Learn more: https://yourcompany.com/about'
+        );
+        break;
+
+      case 'contact':
+        await this.client.sendContacts(message.from, [
+          {
+            name: { formatted_name: 'Customer Support Team' },
+            phones: [{ phone: '+1-800-555-HELP', type: 'WORK' }],
+            emails: [{ email: 'support@yourcompany.com', type: 'WORK' }],
+            urls: [{ url: 'https://yourcompany.com/support', type: 'WORK' }],
+          }
+        ]);
+        break;
+
+      default:
+        await this.client.sendText(
+          message.from,
+          'Thank you for your selection. Our team will assist you shortly.'
+        );
+    }
+  }
+
+  private async handleListSelect(
+    message: ProcessedIncomingMessage & { interactive: any },
+  ) {
+    const listId = message.interactive.list_id;
+
+    switch (listId) {
+      case 'technical':
+        await this.client.sendText(
+          message.from,
+          '🔧 **Technical Support**\n\n' +
+          'Please provide:\n' +
+          '• Description of the issue\n' +
+          '• When did it start?\n' +
+          '• Any error messages\n' +
+          '• Steps you\'ve already tried\n\n' +
+          'A technical specialist will respond within 1 hour.'
+        );
+        break;
+
+      case 'billing':
+        await this.client.sendText(
+          message.from,
+          '💳 **Billing Support**\n\n' +
+          'For billing inquiries, please provide:\n' +
+          '• Account number or email\n' +
+          '• Nature of your inquiry\n' +
+          '• Invoice number (if applicable)\n\n' +
+          'Our billing team will respond within 4 hours.'
+        );
+        break;
+
+      case 'general':
+        await this.client.sendText(
+          message.from,
+          '💬 **General Inquiry**\n\n' +
+          'Thank you for contacting us! Please share your question or feedback.\n\n' +
+          'We value your input and will respond within 24 hours.'
+        );
+        break;
+
+      default:
+        await this.client.sendText(
+          message.from,
+          'Thank you for your selection. Our team will assist you shortly.'
+        );
+    }
+  }
+
+  private async handleMediaMessage(
+    message: ProcessedIncomingMessage & { media: any },
+    type: string,
+  ) {
+    const mediaInfo = message.media;
+
+    await this.client.sendText(
+      message.from,
+      `📎 **${type.charAt(0).toUpperCase() + type.slice(1)} Received**\n\n` +
+      `Filename: ${mediaInfo.filename || 'N/A'}\n` +
+      `Size: ${this.formatFileSize(mediaInfo.file_size)}\n\n` +
+      `Thank you for sharing! Our team will review it and respond accordingly.`
+    );
+
+    // Optional: Download and process the media
+    // const buffer = await this.client.downloadMedia(mediaInfo.id);
+    // await this.processMediaFile(buffer, type, message.from);
+  }
+
+  private async handleError(error: Error, message: ProcessedIncomingMessage) {
+    try {
+      await this.client.sendText(
+        message.from,
+        '⚠️ We encountered a technical issue while processing your message. Please try again in a few moments.\n\n' +
+        'If the problem persists, contact our support team.'
+      );
+    } catch (sendError) {
+      console.error('Failed to send error message:', sendError);
+    }
+  }
+
+  private formatFileSize(bytes: number): string {
+    if (!bytes) return 'Unknown';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  // Helper method to get client for other services
+  getClient(): WhatsAppClient {
+    return this.client;
+  }
+}
+```
+
+#### 2. Controller Layer (`webhook.controller.ts`)
+
+```typescript
+import { Controller, All, Req, Res, Logger } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import type { Request, Response } from 'express';
+import { WebhookService } from './webhook.service';
+
+@ApiTags('webhooks')
+@Controller('webhook')
+export class WebhookController {
+  private readonly logger = new Logger(WebhookController.name);
+
+  constructor(private readonly webhookService: WebhookService) {}
+
+  @All()
+  @ApiOperation({ summary: 'Handle WhatsApp webhook events' })
+  @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async handleWebhook(@Req() req: Request, @Res() res: Response) {
+    try {
+      this.logger.log(`Webhook received: ${req.method} ${req.url}`);
+
+      const result = await this.webhookService.processWebhook(
+        req.body,
+        req.query,
+      );
+
+      this.logger.log(`Webhook processed with status: ${result.status}`);
+      res.status(result.status).send(result.response);
+    } catch (error) {
+      this.logger.error('Webhook processing failed:', error);
+      res.status(500).send('Internal Server Error');
+    }
+  }
+}
+```
+
+#### 3. Module Configuration (`app.module.ts`)
+
+```typescript
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { WebhookController } from './webhook.controller';
+import { WebhookService } from './webhook.service';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+    }),
+  ],
+  controllers: [WebhookController],
+  providers: [WebhookService],
+  exports: [WebhookService], // Export for use in other modules
+})
+export class AppModule {}
+```
+
+#### 4. Environment Configuration (`.env`)
+
+```bash
+# WhatsApp Configuration
+WHATSAPP_ACCESS_TOKEN=your_access_token_here
+WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id_here
+WHATSAPP_WEBHOOK_TOKEN=your_webhook_verify_token_here
+WHATSAPP_BUSINESS_ID=your_business_account_id_here
+
+# Optional Configuration
+WHATSAPP_BASE_URL=https://graph.facebook.com
+WHATSAPP_API_VERSION=v23.0
+WHATSAPP_TIMEOUT=30000
+
+# Application Configuration
+PORT=3000
+NODE_ENV=development
+```
+
+#### 5. Main Application (`main.ts`)
+
+```typescript
+import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  // Enable CORS if needed
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
+
+  // Add request body parsing middleware
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+
+  Logger.log(`🚀 WhatsApp Webhook Service running on port ${port}`, 'Bootstrap');
+  Logger.log(`📱 Webhook endpoint: http://localhost:${port}/webhook`, 'Bootstrap');
+}
+
+bootstrap();
+```
+
+## Express.js Integration
+
+### Basic Express Setup
+
+```typescript
+import express from 'express';
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const app = express();
+app.use(express.json());
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN!,
+});
+
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    console.log(`Text from ${message.from}: ${message.text}`);
+    await client.sendText(message.from, `Echo: ${message.text}`);
+  },
+
+  onError: async (error) => {
+    console.error('Webhook error:', error.message);
+  }
+});
+
+app.all('/webhook', async (req, res) => {
+  try {
+    const result = await webhookProcessor.processWebhook(req.body, req.query);
+    res.status(result.status).send(result.response);
+  } catch (error) {
+    console.error('Webhook processing failed:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+app.listen(3000, () => {
+  console.log('🚀 Webhook server running on port 3000');
+});
+```
+
+### Express with Middleware
+
+```typescript
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+
+const app = express();
+
+// Security middleware
+app.use(helmet());
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+app.use('/webhook', limiter);
+
+// Webhook endpoint
+app.all('/webhook', async (req, res) => {
+  const result = await webhookProcessor.processWebhook(req.body, req.query);
+  res.status(result.status).send(result.response);
+});
+
+app.listen(process.env.PORT || 3000);
+```
+
+## Next.js Integration
+
+### API Route (App Router)
+
+```typescript
+// app/api/webhook/route.ts
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+import { NextRequest, NextResponse } from 'next/server';
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN!,
+});
+
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    await client.sendText(message.from, `Echo: ${message.text}`);
+  }
+});
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const result = await webhookProcessor.processWebhook({}, Object.fromEntries(searchParams));
+  return new NextResponse(result.response, { status: result.status });
+}
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const result = await webhookProcessor.processWebhook(body, {});
+  return new NextResponse(result.response, { status: result.status });
+}
+```
+
+### API Route (Pages Router)
+
+```typescript
+// pages/api/webhook.ts
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN!,
+});
+
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    await client.sendText(message.from, `Next.js Echo: ${message.text}`);
+  }
+});
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    const result = await webhookProcessor.processWebhook(req.body, req.query);
+    res.status(result.status).send(result.response);
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).send('Internal Server Error');
+  }
+}
+```
+
+## Fastify Integration
+
+### Basic Fastify Setup
+
+```typescript
+import Fastify from 'fastify';
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const fastify = Fastify({ logger: true });
+
+const client = new WhatsAppClient({
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN!,
+});
+
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    await client.sendText(message.from, `Fastify Echo: ${message.text}`);
+  }
+});
+
+fastify.all('/webhook', async (request, reply) => {
+  try {
+    const result = await webhookProcessor.processWebhook(
+      request.body,
+      request.query
+    );
+    reply.code(result.status).send(result.response);
+  } catch (error) {
+    fastify.log.error('Webhook error:', error);
+    reply.code(500).send('Internal Server Error');
+  }
+});
+
+const start = async () => {
+  try {
+    await fastify.listen({ port: 3000 });
+    fastify.log.info('🚀 Fastify server running on port 3000');
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
+
+start();
+```
+
+
+
+## Performance Optimization
+
+### Connection Pooling
+
+```typescript
+// Use a singleton pattern for the client
+class WhatsAppService {
+  private static instance: WhatsAppService;
+  private client: WhatsAppClient;
+  private processor: any;
+
+  private constructor() {
+    this.client = new WhatsAppClient({
+      accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
+      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+      webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_TOKEN!,
+    });
+
+    this.processor = this.client.createWebhookProcessor({
+      // handlers...
+    });
+  }
+
+  static getInstance(): WhatsAppService {
+    if (!WhatsAppService.instance) {
+      WhatsAppService.instance = new WhatsAppService();
+    }
+    return WhatsAppService.instance;
+  }
+
+  getProcessor() {
+    return this.processor;
+  }
+}
+
+// Usage in any framework
+const whatsapp = WhatsAppService.getInstance();
+const processor = whatsapp.getProcessor();
+```
+
+### Async Message Processing
+
+```typescript
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    // Quick acknowledgment
+    await client.sendText(message.from, 'Message received! Processing...');
+
+    // Process in background
+    setImmediate(async () => {
+      try {
+        const result = await processLongRunningTask(message.text);
+        await client.sendText(message.from, `Result: ${result}`);
+      } catch (error) {
+        await client.sendText(message.from, 'Processing failed. Please try again.');
+      }
+    });
+  }
+});
+```
+
+## Deployment Best Practices
+
+### Environment Variables
+
+```bash
+# Production environment variables
+WHATSAPP_ACCESS_TOKEN=your_production_token
+WHATSAPP_PHONE_NUMBER_ID=your_production_phone_id
+WHATSAPP_WEBHOOK_TOKEN=your_secure_webhook_token
+WHATSAPP_API_VERSION=v23.0
+NODE_ENV=production
+LOG_LEVEL=info
+```
+
+### Health Checks
+
+```typescript
+// Add health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    const isConnected = await client.testConnection();
+    res.json({
+      status: 'healthy',
+      whatsapp: isConnected ? 'connected' : 'disconnected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'unhealthy',
+      error: error.message
+    });
+  }
+});
+```
+
+### Monitoring and Logging
+
+```typescript
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    // Log metrics
+    console.log(JSON.stringify({
+      event: 'message_received',
+      type: 'text',
+      from: message.from,
+      timestamp: new Date().toISOString(),
+      messageLength: message.text.length
+    }));
+
+    // Process message
+    await handleMessage(message);
+  },
+
+  onError: async (error, message) => {
+    // Log errors for monitoring
+    console.error(JSON.stringify({
+      event: 'webhook_error',
+      error: error.message,
+      messageId: message?.id,
+      from: message?.from,
+      timestamp: new Date().toISOString()
+    }));
+  }
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Webhook Security"
+    icon="shield"
+    href="/webhooks/security"
+  >
+    Implement webhook verification and security measures
+  </Card>
+  <Card
+    title="Error Handling"
+    icon="exclamation-triangle"
+    href="/webhooks/error-handling"
+  >
+    Advanced error handling patterns and retry logic
+  </Card>
+  <Card
+    title="Testing Webhooks"
+    icon="flask"
+    href="/webhooks/testing"
+  >
+    Testing strategies for webhook implementations
+  </Card>
+  <Card
+    title="Production Deployment"
+    icon="cloud"
+    href="/guides/production-deployment"
+  >
+    Deploy your webhook service to production
+  </Card>
+</CardGroup>

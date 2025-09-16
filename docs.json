@@ -78,7 +78,8 @@
           {
             "group": "Examples",
             "pages": [
-              "examples/basic-usage"
+              "examples/basic-usage",
+              "examples/framework-integration"
             ]
           },
           {

@@ -288,67 +288,19 @@ const webhookProcessor = client.createWebhookProcessor({
 
 ## Framework Integration
 
-### Express.js
+The webhook processor works universally with any Node.js framework:
 
 ```typescript
-import express from 'express';
-
-const app = express();
-app.use(express.json());
-
+// Universal pattern for any framework
 app.all('/webhook', async (req, res) => {
   const result = await webhookProcessor.processWebhook(req.body, req.query);
   res.status(result.status).send(result.response);
 });
-
-app.listen(3000, () => {
-  console.log('Webhook server running on port 3000');
-});
 ```
 
-### Next.js API Route
-
-```typescript
-// pages/api/webhook.ts
-import type { NextApiRequest, NextApiResponse } from 'next';
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const result = await webhookProcessor.processWebhook(req.body, req.query);
-  res.status(result.status).send(result.response);
-}
-```
-
-### Fastify
-
-```typescript
-import Fastify from 'fastify';
-
-const fastify = Fastify();
-
-fastify.all('/webhook', async (request, reply) => {
-  const result = await webhookProcessor.processWebhook(request.body, request.query);
-  reply.code(result.status).send(result.response);
-});
-
-fastify.listen({ port: 3000 });
-```
-
-### AWS Lambda
-
-```typescript
-export const handler = async (event: any) => {
-  const body = event.body ? JSON.parse(event.body) : {};
-  const query = event.queryStringParameters || {};
-  
-  const result = await webhookProcessor.processWebhook(body, query);
-  
-  return {
-    statusCode: result.status,
-    body: result.response.toString(),
-    headers: { 'Content-Type': 'text/plain' }
-  };
-};
-```
+<Tip>
+For complete framework-specific examples including NestJS, Express, Next.js, Fastify, and AWS Lambda, see our [Framework Integration Examples](/examples/framework-integration).
+</Tip>
 
 ## Advanced Features
 
@@ -497,7 +449,7 @@ const webhookProcessor = client.createWebhookProcessor({
   <Card
     title="Framework Integration"
     icon="layers"
-    href="/webhooks/frameworks"
+    href="/examples/framework-integration"
   >
     Specific integration guides for different frameworks
   </Card>
