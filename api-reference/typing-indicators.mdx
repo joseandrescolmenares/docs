@@ -1,0 +1,629 @@
+---
+title: "Typing Indicators & Read Receipts"
+description: "Enhance user experience with real-time typing indicators and read receipt confirmations"
+---
+
+## Overview
+
+Typing indicators and read receipts provide real-time feedback to users, making conversations feel more natural and interactive. These features help users understand when you're responding and confirm when their messages have been seen.
+
+## Key Features
+
+- **Typing Indicators**: Show when you're composing a response
+- **Read Receipts**: Mark messages as read to acknowledge receipt
+- **Smart Duration**: Customizable typing indicator duration (up to 25 seconds)
+- **Message Context**: Link typing indicators to specific messages
+- **Automatic Management**: Built-in timeout and state management
+
+## How It Works
+
+### Typing Indicators
+When you send a typing indicator, the user sees the familiar "typing..." animation in their chat, similar to regular WhatsApp conversations. This provides immediate feedback that their message was received and you're preparing a response.
+
+### Read Receipts
+Read receipts show blue checkmarks next to messages, indicating they've been read. This helps users know their messages were seen, even if you don't respond immediately.
+
+**User's View:**
+```
+[Their message] ✓✓ (delivered)
+[Their message] ✓✓ (read - blue checkmarks)
+[Typing indicator] You are typing...
+```
+
+## Types and Interfaces
+
+```typescript
+// Enum additions
+export enum WhatsAppMessageType {
+  // ... existing types
+  TYPING_INDICATOR = 'typing_indicator',
+  READ_RECEIPT = 'read_receipt',
+}
+
+// Typing indicator message structure
+export interface TypingIndicatorMessage {
+  messaging_product: 'whatsapp';
+  recipient_type?: 'individual';
+  to: string;
+  message_id?: string;
+  status?: 'read';
+  typing_indicator: {
+    type: 'text';
+  };
+}
+
+// Read receipt message structure
+export interface ReadReceiptMessage {
+  messaging_product: 'whatsapp';
+  status: 'read';
+  message_id: string;
+}
+
+// Response interface
+export interface TypingIndicatorResponse {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+}
+```
+
+## Methods
+
+### Typing Indicators
+
+```typescript
+// Basic typing indicator (25 seconds default)
+async sendTypingIndicator(to: string, messageId?: string): Promise<TypingIndicatorResponse>
+
+// Typing indicator with custom duration
+async sendTypingIndicatorWithDuration(
+  to: string,
+  duration: number = 25000,
+  messageId?: string
+): Promise<TypingIndicatorResponse>
+```
+
+### Read Receipts
+
+```typescript
+// Mark specific message as read
+async markMessageAsRead(messageId: string): Promise<TypingIndicatorResponse>
+```
+
+## Usage Examples
+
+### Basic Typing Indicators
+
+```typescript
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient(accessToken, phoneNumberId);
+
+// Simple typing indicator
+await client.sendTypingIndicator('+1234567890');
+
+// Typing indicator linked to specific message
+await client.sendTypingIndicator('+1234567890', messageId);
+
+// Custom duration (15 seconds)
+await client.sendTypingIndicatorWithDuration('+1234567890', 15000);
+
+// Custom duration with message context
+await client.sendTypingIndicatorWithDuration('+1234567890', 20000, messageId);
+```
+
+### Read Receipts
+
+```typescript
+// Mark a message as read
+await client.markMessageAsRead('wamid.HBgLMTY1MDM4Nzk0MzkVAgARGBJDQjZCMzlEQUE4OTJCMTE4RTUA');
+```
+
+### Intelligent Conversation Flow
+
+```typescript
+async function handleUserMessage(message) {
+  // 1. Immediately mark as read
+  await client.markMessageAsRead(message.id);
+
+  // 2. Show typing indicator while processing
+  await client.sendTypingIndicator(message.from, message.id);
+
+  // 3. Simulate processing time
+  await new Promise(resolve => setTimeout(resolve, 3000));
+
+  // 4. Send response
+  await client.sendText(message.from, 'Thanks for your message! How can I help you?');
+}
+```
+
+## Webhook Integration
+
+### Smart Response System
+
+```typescript
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    // Mark as read immediately
+    await client.markMessageAsRead(message.id);
+
+    const query = message.text.toLowerCase();
+
+    if (query.includes('help') || query.includes('support')) {
+      // Show typing for support queries
+      await client.sendTypingIndicatorWithDuration(message.from, 10000, message.id);
+
+      // Process support request
+      const supportResponse = await processSupportQuery(query);
+
+      await client.sendText(message.from, supportResponse);
+    }
+
+    else if (query.includes('order') || query.includes('status')) {
+      // Longer typing for order lookups
+      await client.sendTypingIndicatorWithDuration(message.from, 20000, message.id);
+
+      // Look up order information
+      const orderInfo = await lookupOrder(query);
+
+      await client.sendText(message.from, orderInfo);
+    }
+
+    else {
+      // Quick acknowledgment
+      await client.sendTypingIndicator(message.from, message.id);
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      await client.sendText(message.from, 'Got it! Let me help you with that.');
+    }
+  },
+
+  onImageMessage: async (message) => {
+    await client.markMessageAsRead(message.id);
+    await client.sendTypingIndicator(message.from, message.id);
+
+    // Process image
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    await client.sendText(message.from, 'Thanks for sharing the image!');
+  },
+
+  onButtonReply: async (message) => {
+    await client.markMessageAsRead(message.id);
+
+    // Quick response for button clicks
+    await client.sendTypingIndicatorWithDuration(message.from, 5000);
+
+    const response = await processButtonAction(message.button.id);
+    await client.sendText(message.from, response);
+  }
+});
+```
+
+### Advanced Conversation Management
+
+```typescript
+class ConversationManager {
+  private activeTyping = new Map();
+
+  async startTypingSession(userPhone, messageId, expectedDuration) {
+    // Prevent multiple typing indicators
+    if (this.activeTyping.has(userPhone)) {
+      return;
+    }
+
+    this.activeTyping.set(userPhone, {
+      messageId,
+      startTime: Date.now(),
+      duration: expectedDuration
+    });
+
+    await client.sendTypingIndicatorWithDuration(userPhone, expectedDuration, messageId);
+
+    // Auto-cleanup
+    setTimeout(() => {
+      this.activeTyping.delete(userPhone);
+    }, expectedDuration);
+  }
+
+  async handleComplexQuery(message) {
+    await client.markMessageAsRead(message.id);
+
+    const complexity = this.analyzeQueryComplexity(message.text);
+
+    // Adjust typing duration based on complexity
+    const duration = complexity === 'simple' ? 5000 :
+                    complexity === 'medium' ? 15000 : 25000;
+
+    await this.startTypingSession(message.from, message.id, duration);
+
+    // Process based on complexity
+    const response = await this.processQuery(message.text, complexity);
+
+    await client.sendText(message.from, response);
+  }
+
+  analyzeQueryComplexity(text) {
+    const wordCount = text.split(' ').length;
+    const hasMultipleQuestions = (text.match(/\?/g) || []).length > 1;
+    const hasComplexTerms = /order|refund|technical|problem|issue/.test(text.toLowerCase());
+
+    if (wordCount > 20 || hasMultipleQuestions || hasComplexTerms) {
+      return 'complex';
+    } else if (wordCount > 10) {
+      return 'medium';
+    }
+    return 'simple';
+  }
+}
+```
+
+## Advanced Use Cases
+
+### Customer Service Bot
+
+```typescript
+class CustomerServiceBot {
+  async handleCustomerMessage(message) {
+    // Always acknowledge receipt
+    await client.markMessageAsRead(message.id);
+
+    const intent = await this.classifyIntent(message.text);
+
+    switch (intent) {
+      case 'complaint':
+        await this.handleComplaint(message);
+        break;
+      case 'order_inquiry':
+        await this.handleOrderInquiry(message);
+        break;
+      case 'technical_support':
+        await this.handleTechnicalSupport(message);
+        break;
+      default:
+        await this.handleGeneralInquiry(message);
+    }
+  }
+
+  async handleComplaint(message) {
+    // Show empathy with immediate typing
+    await client.sendTypingIndicator(message.from, message.id);
+
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    await client.sendText(
+      message.from,
+      'I understand your concern and I want to help resolve this for you. Let me look into this right away.'
+    );
+
+    // Continue with longer processing
+    await client.sendTypingIndicatorWithDuration(message.from, 20000);
+
+    // Escalate to human agent
+    await this.escalateToHuman(message);
+  }
+
+  async handleOrderInquiry(message) {
+    await client.sendTypingIndicatorWithDuration(message.from, 15000, message.id);
+
+    const orderInfo = await this.lookupOrderInfo(message);
+
+    if (orderInfo) {
+      await client.sendText(
+        message.from,
+        `Here's your order information:\n\n${orderInfo}`
+      );
+    } else {
+      await client.sendText(
+        message.from,
+        'I couldn\'t find that order. Could you please provide your order number?'
+      );
+    }
+  }
+}
+```
+
+### Progressive Response System
+
+```typescript
+class ProgressiveResponder {
+  async handleLongProcess(message, processFunction) {
+    // Initial acknowledgment
+    await client.markMessageAsRead(message.id);
+    await client.sendTypingIndicator(message.from, message.id);
+
+    await client.sendText(message.from, 'Processing your request...');
+
+    // Show continued activity
+    const processSteps = [
+      'Analyzing your request...',
+      'Retrieving information...',
+      'Preparing response...'
+    ];
+
+    for (let i = 0; i < processSteps.length; i++) {
+      await client.sendTypingIndicatorWithDuration(message.from, 8000);
+
+      const stepResponse = await client.sendText(message.from, processSteps[i]);
+
+      // React to our own message to show progress
+      await client.reactWithCheck(message.from, stepResponse.messages[0].id);
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+
+    // Final typing before result
+    await client.sendTypingIndicatorWithDuration(message.from, 10000);
+
+    const result = await processFunction(message);
+
+    await client.sendText(message.from, result);
+  }
+}
+```
+
+### Smart Retry Logic
+
+```typescript
+class SmartTypingManager {
+  async safeTypingIndicator(userPhone, messageId, duration = 25000) {
+    try {
+      const response = await client.sendTypingIndicatorWithDuration(
+        userPhone,
+        duration,
+        messageId
+      );
+
+      if (!response.success) {
+        console.log('Typing indicator failed:', response.error);
+        // Continue without typing indicator
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Typing indicator error:', error);
+      // Don't let typing failures break the conversation
+      return false;
+    }
+  }
+
+  async safeReadReceipt(messageId) {
+    try {
+      const response = await client.markMessageAsRead(messageId);
+
+      if (!response.success) {
+        console.log('Read receipt failed:', response.error);
+      }
+
+      return response.success;
+    } catch (error) {
+      console.error('Read receipt error:', error);
+      return false;
+    }
+  }
+
+  async smartConversationFlow(message, responseFunction) {
+    // Try to mark as read (non-blocking)
+    await this.safeReadReceipt(message.id);
+
+    // Estimate response time
+    const estimatedTime = await this.estimateResponseTime(message);
+
+    // Show typing if we have a good estimate
+    if (estimatedTime > 2000) {
+      await this.safeTypingIndicator(
+        message.from,
+        message.id,
+        Math.min(estimatedTime, 25000)
+      );
+    }
+
+    // Generate response
+    const response = await responseFunction(message);
+
+    // Send response
+    await client.sendText(message.from, response);
+  }
+}
+```
+
+## Message Structure
+
+### Typing Indicator Message
+
+```typescript
+{
+  messaging_product: 'whatsapp',
+  recipient_type: 'individual',
+  to: '+1234567890',
+  message_id: 'wamid.HBgLMTY1MDM4Nzk0MzkVAgARGBJDQjZCMzlEQUE4OTJCMTE4RTUA', // Optional
+  typing_indicator: {
+    type: 'text'
+  }
+}
+```
+
+### Read Receipt Message
+
+```typescript
+{
+  messaging_product: 'whatsapp',
+  status: 'read',
+  message_id: 'wamid.HBgLMTY1MDM4Nzk0MzkVAgARGBJDQjZCMzlEQUE4OTJCMTE4RTUA'
+}
+```
+
+## Best Practices
+
+### 1. Timing and Duration
+
+```typescript
+// ✅ Good: Match typing duration to actual processing time
+const processingTime = estimateProcessingTime(query);
+await client.sendTypingIndicatorWithDuration(userPhone, processingTime, messageId);
+
+// ✅ Good: Quick acknowledgment for simple queries
+await client.sendTypingIndicator(userPhone, messageId); // 25s default
+await processSimpleQuery();
+
+// ❌ Avoid: Overly long typing for simple responses
+// ❌ Avoid: No typing indicator for complex processes
+```
+
+### 2. Read Receipt Management
+
+```typescript
+// ✅ Good: Mark as read immediately upon processing
+webhookProcessor.onTextMessage = async (message) => {
+  await client.markMessageAsRead(message.id); // First thing
+  await processMessage(message);
+};
+
+// ✅ Good: Mark as read even if auto-responding
+if (isAutoResponse(message)) {
+  await client.markMessageAsRead(message.id);
+  await sendAutoResponse(message);
+}
+
+// ❌ Avoid: Forgetting to mark important messages as read
+// ❌ Avoid: Marking messages as read without processing them
+```
+
+### 3. User Experience Flow
+
+```typescript
+// ✅ Good: Complete interaction flow
+async function completeInteractionFlow(message) {
+  // 1. Acknowledge receipt
+  await client.markMessageAsRead(message.id);
+
+  // 2. Show activity
+  await client.sendTypingIndicator(message.from, message.id);
+
+  // 3. Process
+  const response = await processMessage(message);
+
+  // 4. Respond
+  await client.sendText(message.from, response);
+
+  // 5. Optional: React to show satisfaction
+  if (wasSuccessful(response)) {
+    await client.reactWithCheck(message.from, message.id);
+  }
+}
+```
+
+### 4. Error Handling
+
+```typescript
+async function robustTypingFlow(message) {
+  try {
+    await client.markMessageAsRead(message.id);
+  } catch (error) {
+    console.log('Read receipt failed, continuing...');
+  }
+
+  try {
+    await client.sendTypingIndicator(message.from, message.id);
+  } catch (error) {
+    console.log('Typing indicator failed, continuing...');
+  }
+
+  // Always try to send the actual response
+  try {
+    const response = await processMessage(message);
+    await client.sendText(message.from, response);
+  } catch (error) {
+    await client.sendText(
+      message.from,
+      'Sorry, I encountered an error processing your request. Please try again.'
+    );
+  }
+}
+```
+
+## Limitations
+
+- **Duration Limit**: Typing indicators can last maximum 25 seconds
+- **One at a Time**: Only one typing indicator per conversation at a time
+- **Message Age**: Can only mark messages as read within 30 days
+- **Rate Limits**: These actions count toward your messaging rate limits
+- **No Persistence**: Typing indicators don't persist across app restarts
+
+## Configuration Tips
+
+### Response Time Optimization
+
+```typescript
+class ResponseTimeOptimizer {
+  constructor() {
+    this.averageResponseTimes = new Map();
+  }
+
+  async optimizeTypingDuration(messageType, userPhone) {
+    const userHistory = this.averageResponseTimes.get(userPhone) || {};
+    const avgTime = userHistory[messageType] || this.getDefaultTime(messageType);
+
+    // Add 20% buffer but cap at 25 seconds
+    return Math.min(avgTime * 1.2, 25000);
+  }
+
+  getDefaultTime(messageType) {
+    const defaults = {
+      'simple_text': 3000,
+      'complex_query': 15000,
+      'order_lookup': 20000,
+      'technical_support': 25000
+    };
+
+    return defaults[messageType] || 10000;
+  }
+
+  recordResponseTime(messageType, userPhone, actualTime) {
+    if (!this.averageResponseTimes.has(userPhone)) {
+      this.averageResponseTimes.set(userPhone, {});
+    }
+
+    const userTimes = this.averageResponseTimes.get(userPhone);
+    const currentAvg = userTimes[messageType] || actualTime;
+
+    // Rolling average
+    userTimes[messageType] = (currentAvg * 0.8) + (actualTime * 0.2);
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Message Reactions"
+    icon="heart"
+    href="/messages/reactions"
+  >
+    Add emoji reactions for quick acknowledgments
+  </Card>
+  <Card
+    title="Contextual Replies"
+    icon="reply"
+    href="/messages/contextual-replies"
+  >
+    Reply to specific messages with context
+  </Card>
+  <Card
+    title="Webhook System"
+    icon="webhook"
+    href="/webhooks/overview"
+  >
+    Set up automated typing and read receipt flows
+  </Card>
+  <Card
+    title="Client API Reference"
+    icon="code"
+    href="/api-reference/client"
+  >
+    Explore all available client methods
+  </Card>
+</CardGroup>

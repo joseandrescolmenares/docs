@@ -1,0 +1,562 @@
+---
+title: "Message Reactions"
+description: "React to messages with emojis to express emotions and provide quick feedback without sending additional messages"
+---
+
+## Overview
+
+Message reactions allow you to respond to any message with an emoji, providing a quick and expressive way to acknowledge, appreciate, or react to content without sending a full message. This feature enhances user engagement and reduces message clutter.
+
+## Key Features
+
+- **Emoji Reactions**: React with any emoji to any message
+- **Predefined Constants**: 14 commonly used emoji reactions
+- **Convenience Methods**: Dedicated methods for popular reactions
+- **Remove Reactions**: Ability to remove reactions from messages
+- **Universal Support**: React to any message type (text, media, interactive, etc.)
+
+## How Reactions Work
+
+When you send a reaction, it appears as a small emoji overlay on the original message, similar to social media platforms. Users can see who reacted and with which emoji.
+
+**Visual Example:**
+```
+[Original Message]
+📸 Here's the photo from our meeting
+
+[With Reaction]
+📸 Here's the photo from our meeting  👍  ❤️  🔥
+    ↳ You reacted with 👍
+```
+
+## Reaction Interface
+
+```typescript
+export interface ReactionMessage extends BaseMessage {
+  type: WhatsAppMessageType.REACTION;
+  reaction: {
+    message_id: string;  // ID of message to react to
+    emoji: string;       // Emoji to use as reaction
+  };
+}
+
+export interface ReactionResponse {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+}
+```
+
+## Available Emojis
+
+### Predefined Emoji Constants
+
+```typescript
+export const REACTION_EMOJIS = {
+  LIKE: '👍',
+  LOVE: '❤️',
+  LAUGH: '😂',
+  WOW: '😮',
+  SAD: '😢',
+  ANGRY: '😠',
+  THUMBS_UP: '👍',
+  THUMBS_DOWN: '👎',
+  HEART: '❤️',
+  HEART_EYES: '😍',
+  FIRE: '🔥',
+  CLAP: '👏',
+  CHECK: '✅',
+  CROSS: '❌'
+} as const;
+
+export type ReactionEmoji = typeof REACTION_EMOJIS[keyof typeof REACTION_EMOJIS] | string;
+```
+
+## Reaction Methods
+
+### Primary Reaction Method
+
+```typescript
+// Send any emoji reaction
+async sendReaction(to: string, messageId: string, emoji: ReactionEmoji): Promise<ReactionResponse>
+
+// Remove a reaction
+async removeReaction(to: string, messageId: string): Promise<ReactionResponse>
+```
+
+### Convenience Methods
+
+```typescript
+// Common reactions
+async reactWithLike(to: string, messageId: string): Promise<ReactionResponse>
+async reactWithLove(to: string, messageId: string): Promise<ReactionResponse>
+async reactWithLaugh(to: string, messageId: string): Promise<ReactionResponse>
+async reactWithWow(to: string, messageId: string): Promise<ReactionResponse>
+async reactWithSad(to: string, messageId: string): Promise<ReactionResponse>
+async reactWithAngry(to: string, messageId: string): Promise<ReactionResponse>
+
+// Gesture reactions
+async reactWithThumbsUp(to: string, messageId: string): Promise<ReactionResponse>
+async reactWithThumbsDown(to: string, messageId: string): Promise<ReactionResponse>
+async reactWithClap(to: string, messageId: string): Promise<ReactionResponse>
+
+// Emotion reactions
+async reactWithHeart(to: string, messageId: string): Promise<ReactionResponse>
+async reactWithHeartEyes(to: string, messageId: string): Promise<ReactionResponse>
+async reactWithFire(to: string, messageId: string): Promise<ReactionResponse>
+
+// Status reactions
+async reactWithCheck(to: string, messageId: string): Promise<ReactionResponse>
+async reactWithCross(to: string, messageId: string): Promise<ReactionResponse>
+```
+
+## Usage Examples
+
+### Basic Reactions
+
+```typescript
+import { WhatsAppClient, REACTION_EMOJIS } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient(accessToken, phoneNumberId);
+
+// React with a thumbs up
+await client.reactWithLike('+1234567890', messageId);
+
+// React with a custom emoji
+await client.sendReaction('+1234567890', messageId, '🎉');
+
+// React using predefined constants
+await client.sendReaction('+1234567890', messageId, REACTION_EMOJIS.FIRE);
+
+// Remove a reaction
+await client.removeReaction('+1234567890', messageId);
+```
+
+### Convenience Method Examples
+
+```typescript
+// Positive reactions
+await client.reactWithLike(userPhone, messageId);        // 👍
+await client.reactWithLove(userPhone, messageId);        // ❤️
+await client.reactWithFire(userPhone, messageId);        // 🔥
+await client.reactWithClap(userPhone, messageId);        // 👏
+await client.reactWithCheck(userPhone, messageId);       // ✅
+
+// Emotional reactions
+await client.reactWithLaugh(userPhone, messageId);       // 😂
+await client.reactWithWow(userPhone, messageId);         // 😮
+await client.reactWithHeartEyes(userPhone, messageId);   // 😍
+
+// Negative reactions
+await client.reactWithSad(userPhone, messageId);         // 😢
+await client.reactWithAngry(userPhone, messageId);       // 😠
+await client.reactWithThumbsDown(userPhone, messageId);  // 👎
+await client.reactWithCross(userPhone, messageId);       // ❌
+```
+
+## Webhook Integration
+
+Automatic reactions based on message content:
+
+```typescript
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    const text = message.text.toLowerCase();
+
+    // Auto-react to positive messages
+    if (text.includes('awesome') || text.includes('amazing')) {
+      await client.reactWithFire(message.from, message.id);
+    }
+
+    // React to gratitude
+    else if (text.includes('thank') || text.includes('gracias')) {
+      await client.reactWithHeart(message.from, message.id);
+    }
+
+    // React to questions
+    else if (text.includes('?')) {
+      await client.reactWithWow(message.from, message.id);
+    }
+
+    // Default positive reaction
+    else {
+      await client.reactWithLike(message.from, message.id);
+    }
+  },
+
+  onImageMessage: async (message) => {
+    // React to images with heart eyes
+    await client.reactWithHeartEyes(message.from, message.id);
+  },
+
+  onVideoMessage: async (message) => {
+    // React to videos with fire
+    await client.reactWithFire(message.from, message.id);
+  },
+
+  onAudioMessage: async (message) => {
+    // React to audio with thumbs up
+    await client.reactWithThumbsUp(message.from, message.id);
+  }
+});
+```
+
+## Advanced Use Cases
+
+### Smart Customer Service Reactions
+
+```typescript
+class SmartReactionBot {
+  async processCustomerMessage(message) {
+    const content = message.text?.toLowerCase() || '';
+
+    // Categorize and react accordingly
+    if (this.isComplaint(content)) {
+      await client.reactWithSad(message.from, message.id);
+      await this.escalateToSupport(message);
+    }
+
+    else if (this.isCompliment(content)) {
+      await client.reactWithHeartEyes(message.from, message.id);
+      await this.thankCustomer(message);
+    }
+
+    else if (this.isUrgent(content)) {
+      await client.reactWithWow(message.from, message.id);
+      await this.prioritizeMessage(message);
+    }
+
+    else if (this.isOrder(content)) {
+      await client.reactWithCheck(message.from, message.id);
+      await this.processOrder(message);
+    }
+  }
+
+  isComplaint(text) {
+    return text.includes('problem') || text.includes('issue') || text.includes('wrong');
+  }
+
+  isCompliment(text) {
+    return text.includes('great') || text.includes('excellent') || text.includes('perfect');
+  }
+
+  isUrgent(text) {
+    return text.includes('urgent') || text.includes('asap') || text.includes('emergency');
+  }
+
+  isOrder(text) {
+    return text.includes('order') || text.includes('buy') || text.includes('purchase');
+  }
+}
+```
+
+### Reaction-Based Feedback System
+
+```typescript
+class FeedbackCollector {
+  async sendFeedbackRequest(userPhone) {
+    const response = await client.sendText(
+      userPhone,
+      'How was your experience with our service today?'
+    );
+
+    // Store message ID for reaction tracking
+    this.pendingFeedback.set(response.messages[0].id, {
+      userPhone,
+      timestamp: Date.now()
+    });
+  }
+
+  async handleReactionWebhook(reactionData) {
+    const { message_id, emoji, from } = reactionData;
+
+    if (this.pendingFeedback.has(message_id)) {
+      const feedback = this.analyzeFeedback(emoji);
+
+      await this.storeFeedback(from, feedback);
+
+      // Thank with appropriate reaction
+      if (feedback.rating >= 4) {
+        await client.reactWithLove(from, message_id);
+      } else if (feedback.rating >= 3) {
+        await client.reactWithThumbsUp(from, message_id);
+      } else {
+        await client.reactWithSad(from, message_id);
+      }
+    }
+  }
+
+  analyzeFeedback(emoji) {
+    const feedbackMap = {
+      '😍': { rating: 5, sentiment: 'excellent' },
+      '❤️': { rating: 5, sentiment: 'love' },
+      '🔥': { rating: 5, sentiment: 'amazing' },
+      '👍': { rating: 4, sentiment: 'good' },
+      '👏': { rating: 4, sentiment: 'satisfied' },
+      '😊': { rating: 3, sentiment: 'okay' },
+      '😐': { rating: 2, sentiment: 'neutral' },
+      '👎': { rating: 1, sentiment: 'poor' },
+      '😢': { rating: 1, sentiment: 'disappointed' },
+      '😠': { rating: 1, sentiment: 'angry' }
+    };
+
+    return feedbackMap[emoji] || { rating: 3, sentiment: 'unknown' };
+  }
+}
+```
+
+### Multi-Reaction Conversation Flow
+
+```typescript
+async function handleOrderProcess(message) {
+  const orderId = extractOrderId(message.text);
+
+  if (orderId) {
+    // Acknowledge order inquiry
+    await client.reactWithCheck(message.from, message.id);
+
+    // Send order status
+    const orderStatus = await getOrderStatus(orderId);
+    const statusMessage = await client.sendText(
+      message.from,
+      `Order #${orderId} status: ${orderStatus.status}`
+    );
+
+    // React based on status
+    switch (orderStatus.status) {
+      case 'delivered':
+        await client.reactWithCheck(message.from, statusMessage.messages[0].id);
+        break;
+      case 'shipped':
+        await client.reactWithFire(message.from, statusMessage.messages[0].id);
+        break;
+      case 'processing':
+        await client.reactWithThumbsUp(message.from, statusMessage.messages[0].id);
+        break;
+      case 'cancelled':
+        await client.reactWithSad(message.from, statusMessage.messages[0].id);
+        break;
+    }
+  }
+}
+```
+
+## Custom Emoji Reactions
+
+Beyond the predefined constants, you can use any emoji:
+
+```typescript
+// Custom emojis
+await client.sendReaction(userPhone, messageId, '🎉');  // Party
+await client.sendReaction(userPhone, messageId, '🌟');  // Star
+await client.sendReaction(userPhone, messageId, '💯');  // 100
+await client.sendReaction(userPhone, messageId, '🚀');  // Rocket
+await client.sendReaction(userPhone, messageId, '☕');  // Coffee
+await client.sendReaction(userPhone, messageId, '🎵');  // Music
+await client.sendReaction(userPhone, messageId, '📝');  // Note
+await client.sendReaction(userPhone, messageId, '💡');  // Idea
+
+// Seasonal reactions
+await client.sendReaction(userPhone, messageId, '🎄');  // Christmas
+await client.sendReaction(userPhone, messageId, '🎃');  // Halloween
+await client.sendReaction(userPhone, messageId, '💝');  // Gift
+await client.sendReaction(userPhone, messageId, '🌺');  // Flower
+```
+
+## Message Structure
+
+A reaction message has this structure:
+
+```typescript
+{
+  messaging_product: 'whatsapp',
+  recipient_type: 'individual',
+  to: '+1234567890',
+  type: 'reaction',
+  reaction: {
+    message_id: 'wamid.HBgLMTY1MDM4Nzk0MzkVAgARGBJDQjZCMzlEQUE4OTJCMTE4RTUA',
+    emoji: '👍'
+  }
+}
+```
+
+To remove a reaction:
+
+```typescript
+{
+  messaging_product: 'whatsapp',
+  recipient_type: 'individual',
+  to: '+1234567890',
+  type: 'reaction',
+  reaction: {
+    message_id: 'wamid.HBgLMTY1MDM4Nzk0MzkVAgARGBJDQjZCMzlEQUE4OTJCMTE4RTUA',
+    emoji: ''  // Empty string removes the reaction
+  }
+}
+```
+
+## Best Practices
+
+### 1. Appropriate Reaction Selection
+
+```typescript
+// ✅ Good: Match reaction to content
+await client.reactWithFire(userPhone, messageId);     // For exciting content
+await client.reactWithHeart(userPhone, messageId);    // For appreciation
+await client.reactWithCheck(userPhone, messageId);    // For confirmations
+await client.reactWithThumbsUp(userPhone, messageId); // For approval
+
+// ❌ Avoid: Inappropriate reactions
+// Don't use sad face for positive content
+// Don't overuse fire emoji for everything
+```
+
+### 2. Reaction Timing
+
+```typescript
+// ✅ Good: React promptly to user messages
+webhookProcessor.onTextMessage = async (message) => {
+  // Quick acknowledgment reaction
+  await client.reactWithLike(message.from, message.id);
+
+  // Then process and respond
+  const response = await processMessage(message);
+  await client.sendText(message.from, response);
+};
+
+// ❌ Avoid: Delayed reactions without context
+// Don't react to messages hours later without explanation
+```
+
+### 3. Reaction Combinations
+
+```typescript
+// ✅ Good: Use reactions + messages for rich communication
+async function acknowledgeOrder(message, orderDetails) {
+  // React to acknowledge receipt
+  await client.reactWithCheck(message.from, message.id);
+
+  // Follow with detailed response
+  await client.sendText(
+    message.from,
+    `Order confirmed! 🎉\n\nOrder #${orderDetails.id}\nTotal: $${orderDetails.total}\nETA: ${orderDetails.eta}`
+  );
+}
+```
+
+### 4. Error Handling
+
+```typescript
+async function safeReaction(userPhone, messageId, emoji) {
+  try {
+    const response = await client.sendReaction(userPhone, messageId, emoji);
+
+    if (!response.success) {
+      console.log('Reaction failed:', response.error);
+      // Optionally try alternative reaction
+      await client.reactWithThumbsUp(userPhone, messageId);
+    }
+  } catch (error) {
+    console.error('Reaction error:', error);
+    // Don't let reaction failures break the flow
+  }
+}
+```
+
+## Limitations
+
+- **One Reaction per User**: You can only have one active reaction per message
+- **Message Age**: Can only react to messages within the last 30 days
+- **Emoji Support**: Limited to standard Unicode emojis
+- **Rate Limits**: Reactions count toward your messaging rate limits
+- **Remove Only Own**: You can only remove your own reactions
+
+## Migration Guide
+
+### Adding Reactions to Existing Workflows
+
+```typescript
+// Before: Simple acknowledgment
+webhookProcessor.onTextMessage = async (message) => {
+  await client.sendText(message.from, 'Message received');
+};
+
+// After: Reaction + response
+webhookProcessor.onTextMessage = async (message) => {
+  // Quick reaction for immediate feedback
+  await client.reactWithThumbsUp(message.from, message.id);
+
+  // Optional follow-up message if needed
+  if (requiresResponse(message)) {
+    await client.sendText(message.from, 'Thanks! I\'ll get back to you shortly.');
+  }
+};
+```
+
+## Reaction Analytics
+
+Track reaction patterns for insights:
+
+```typescript
+class ReactionAnalytics {
+  constructor() {
+    this.reactionStats = new Map();
+  }
+
+  async trackReaction(userPhone, messageId, emoji) {
+    await client.sendReaction(userPhone, messageId, emoji);
+
+    // Track for analytics
+    const key = `${userPhone}:${emoji}`;
+    const count = this.reactionStats.get(key) || 0;
+    this.reactionStats.set(key, count + 1);
+  }
+
+  getTopReactions() {
+    return Array.from(this.reactionStats.entries())
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 10);
+  }
+
+  getUserPreferences(userPhone) {
+    const userReactions = Array.from(this.reactionStats.entries())
+      .filter(([key]) => key.startsWith(userPhone))
+      .map(([key, count]) => [key.split(':')[1], count]);
+
+    return userReactions.sort(([,a], [,b]) => b - a);
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Contextual Replies"
+    icon="reply"
+    href="/messages/contextual-replies"
+  >
+    Learn about replying to specific messages
+  </Card>
+  <Card
+    title="Interactive Messages"
+    icon="hand-pointer"
+    href="/messages/interactive"
+  >
+    Create engaging buttons and lists
+  </Card>
+  <Card
+    title="Typing Indicators"
+    icon="clock"
+    href="/api-reference/typing-indicators"
+  >
+    Show when you're typing or mark messages as read
+  </Card>
+  <Card
+    title="Webhook System"
+    icon="webhook"
+    href="/webhooks/overview"
+  >
+    Set up automated reaction responses
+  </Card>
+</CardGroup>

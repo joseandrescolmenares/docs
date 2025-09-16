@@ -1,0 +1,423 @@
+---
+title: "Contextual Replies"
+description: "Reply to specific messages creating clear conversation threads with contextual message references"
+---
+
+## Overview
+
+Contextual replies allow you to respond to specific messages, creating clear conversation threads by referencing previous messages. This feature enhances the user experience by providing context and maintaining organized conversations.
+
+## Key Features
+
+- **Message Threading**: Reply to any specific message with context
+- **All Message Types**: Use contextual replies with text, media, interactive, and all other message types
+- **Convenience Methods**: Dedicated reply methods for each message type
+- **Backward Compatibility**: All existing send methods now support reply context
+
+## How Contextual Replies Work
+
+When you send a contextual reply, WhatsApp displays the original message above your response, making it clear which message you're responding to. This is especially useful in group conversations or when responding to older messages.
+
+**Visual Example:**
+```
+[Original Message from User]
+📸 Here's the photo you requested
+
+[Your Reply - displayed with context]
+↳ Thanks! This looks perfect.
+```
+
+## Base Message Interface
+
+All messages now extend the `BaseMessage` interface which includes optional context:
+
+```typescript
+export interface BaseMessage {
+  messaging_product: 'whatsapp';
+  recipient_type: 'individual';
+  to: string;
+  context?: {
+    message_id: string;  // ID of the message you're replying to
+  };
+}
+```
+
+## Reply Methods
+
+### Primary Reply Method
+
+```typescript
+// Main method for text replies
+async replyToMessage(to: string, messageId: string, text: string): Promise<MessageResponse>
+```
+
+### Convenience Methods by Message Type
+
+```typescript
+// Media replies
+async replyWithImage(to: string, messageId: string, image: any): Promise<MessageResponse>
+async replyWithVideo(to: string, messageId: string, video: any): Promise<MessageResponse>
+async replyWithAudio(to: string, messageId: string, audio: any): Promise<MessageResponse>
+async replyWithDocument(to: string, messageId: string, document: any): Promise<MessageResponse>
+async replyWithSticker(to: string, messageId: string, sticker: any): Promise<MessageResponse>
+
+// Interactive replies
+async replyWithButtons(to: string, messageId: string, text: string, buttons: any[]): Promise<MessageResponse>
+async replyWithList(to: string, messageId: string, text: string, buttonText: string, sections: any[]): Promise<MessageResponse>
+
+// Location and contact replies
+async replyWithLocation(to: string, messageId: string, latitude: number, longitude: number, options?: any): Promise<MessageResponse>
+async replyWithContacts(to: string, messageId: string, contacts: any[]): Promise<MessageResponse>
+```
+
+## Usage Examples
+
+### Basic Text Reply
+
+```typescript
+import { WhatsAppClient } from 'whatsapp-client-sdk';
+
+const client = new WhatsAppClient(accessToken, phoneNumberId);
+
+// Reply to a specific message
+await client.replyToMessage(
+  '+1234567890',
+  'wamid.HBgLMTY1MDM4Nzk0MzkVAgARGBJDQjZCMzlEQUE4OTJCMTE4RTUA',
+  'Thanks for your message!'
+);
+```
+
+### Reply with Media
+
+```typescript
+// Reply with an image
+await client.replyWithImage(
+  '+1234567890',
+  messageId,
+  {
+    link: 'https://example.com/response-image.jpg',
+    caption: 'Here\'s the image you requested'
+  }
+);
+
+// Reply with a document
+await client.replyWithDocument(
+  '+1234567890',
+  messageId,
+  {
+    link: 'https://example.com/document.pdf',
+    filename: 'requested-document.pdf',
+    caption: 'Here\'s the document you asked for'
+  }
+);
+```
+
+### Reply with Interactive Elements
+
+```typescript
+// Reply with buttons
+await client.replyWithButtons(
+  '+1234567890',
+  messageId,
+  'Would you like to continue with this process?',
+  [
+    { id: 'yes', title: 'Yes, continue' },
+    { id: 'no', title: 'No, cancel' },
+    { id: 'info', title: 'More info' }
+  ]
+);
+
+// Reply with a list
+await client.replyWithList(
+  '+1234567890',
+  messageId,
+  'Here are the available options:',
+  'Select Option',
+  [
+    {
+      title: 'Service Options',
+      rows: [
+        { id: 'service1', title: 'Basic Service', description: 'Standard features' },
+        { id: 'service2', title: 'Premium Service', description: 'Advanced features' }
+      ]
+    }
+  ]
+);
+```
+
+### Using Context in Existing Send Methods
+
+All existing `sendX` methods now accept an optional `replyToMessageId` parameter:
+
+```typescript
+// Using existing methods with reply context
+await client.sendText(
+  '+1234567890',
+  'This is a contextual reply',
+  { replyToMessageId: messageId }
+);
+
+await client.sendImage(
+  '+1234567890',
+  { link: 'https://example.com/image.jpg' },
+  { replyToMessageId: messageId }
+);
+
+await client.sendButtons(
+  '+1234567890',
+  'Choose an option:',
+  [{ id: 'option1', title: 'Option 1' }],
+  { replyToMessageId: messageId }
+);
+```
+
+## Webhook Integration
+
+Contextual replies work seamlessly with webhooks for automated responses:
+
+```typescript
+const webhookProcessor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    // Automatically reply to user messages with context
+    if (message.text.toLowerCase().includes('help')) {
+      await client.replyToMessage(
+        message.from,
+        message.id,
+        'I\'m here to help! What do you need assistance with?'
+      );
+    }
+  },
+
+  onImageMessage: async (message) => {
+    // Reply to image messages
+    await client.replyWithText(
+      message.from,
+      message.id,
+      'Thanks for sharing this image!'
+    );
+  },
+
+  onButtonReply: async (message) => {
+    // Reply to button interactions with context
+    await client.replyToMessage(
+      message.from,
+      message.context?.id || message.id,
+      `You selected: ${message.button.title}`
+    );
+  }
+});
+```
+
+## Advanced Use Cases
+
+### Smart Customer Service
+
+```typescript
+async function handleCustomerQuery(message) {
+  const query = message.text.toLowerCase();
+
+  if (query.includes('order status')) {
+    // Reply with order tracking buttons
+    await client.replyWithButtons(
+      message.from,
+      message.id,
+      'I can help you track your order:',
+      [
+        { id: 'track_recent', title: 'Recent Orders' },
+        { id: 'track_specific', title: 'Specific Order' },
+        { id: 'contact_support', title: 'Contact Support' }
+      ]
+    );
+  } else if (query.includes('refund')) {
+    // Reply with refund process document
+    await client.replyWithDocument(
+      message.from,
+      message.id,
+      {
+        link: 'https://company.com/refund-policy.pdf',
+        filename: 'refund-policy.pdf',
+        caption: 'Here\'s our refund policy. Any questions?'
+      }
+    );
+  }
+}
+```
+
+### Conversation Threading
+
+```typescript
+class ConversationManager {
+  private conversations = new Map();
+
+  async handleMessage(message) {
+    const conversationId = message.from;
+
+    // Store message for context
+    if (!this.conversations.has(conversationId)) {
+      this.conversations.set(conversationId, []);
+    }
+
+    const conversation = this.conversations.get(conversationId);
+    conversation.push(message);
+
+    // Reply based on conversation context
+    const lastMessage = conversation[conversation.length - 2];
+
+    if (lastMessage && this.isFollowUpQuestion(message.text)) {
+      await client.replyToMessage(
+        message.from,
+        lastMessage.id,
+        'Building on your previous question...'
+      );
+    }
+  }
+}
+```
+
+## Message Context Structure
+
+When sending contextual replies, the message structure includes:
+
+```typescript
+{
+  messaging_product: 'whatsapp',
+  recipient_type: 'individual',
+  to: '+1234567890',
+  context: {
+    message_id: 'wamid.HBgLMTY1MDM4Nzk0MzkVAgARGBJDQjZCMzlEQUE4OTJCMTE4RTUA'
+  },
+  type: 'text',
+  text: {
+    body: 'Your reply message'
+  }
+}
+```
+
+## Best Practices
+
+### 1. Choose Appropriate Context
+
+```typescript
+// ✅ Good: Reply to specific user queries
+await client.replyToMessage(userPhone, userQuestionId, answer);
+
+// ✅ Good: Acknowledge important information
+await client.replyWithButtons(userPhone, orderMessageId, 'Confirm order?', buttons);
+
+// ❌ Avoid: Replying to your own messages
+// ❌ Avoid: Excessive contextual replies in automated flows
+```
+
+### 2. Maintain Conversation Flow
+
+```typescript
+// ✅ Good: Natural conversation threading
+async function handleOrderInquiry(message) {
+  // First, acknowledge the question
+  await client.replyToMessage(
+    message.from,
+    message.id,
+    'Let me check your order status...'
+  );
+
+  // Then provide detailed response
+  setTimeout(async () => {
+    await client.sendText(
+      message.from,
+      'Your order #12345 has been shipped and will arrive tomorrow.'
+    );
+  }, 2000);
+}
+```
+
+### 3. Error Handling
+
+```typescript
+try {
+  await client.replyToMessage(userPhone, messageId, replyText);
+} catch (error) {
+  if (error.message.includes('message not found')) {
+    // Fallback: send regular message
+    await client.sendText(userPhone, replyText);
+  } else {
+    console.error('Reply failed:', error);
+  }
+}
+```
+
+## Limitations
+
+- **Message Age**: You can only reply to messages sent within the last 30 days
+- **Message Existence**: The original message must still exist in the conversation
+- **Rate Limits**: Contextual replies count toward your messaging rate limits
+- **Template Messages**: Template messages cannot be sent as contextual replies
+
+## Migration Guide
+
+### From Regular Messages to Contextual Replies
+
+```typescript
+// Before: Regular message
+await client.sendText('+1234567890', 'Thanks for your message!');
+
+// After: Contextual reply
+await client.replyToMessage('+1234567890', messageId, 'Thanks for your message!');
+
+// Or using options parameter
+await client.sendText(
+  '+1234567890',
+  'Thanks for your message!',
+  { replyToMessageId: messageId }
+);
+```
+
+### Updating Webhook Handlers
+
+```typescript
+// Before: Simple response
+webhookProcessor.onTextMessage = async (message) => {
+  await client.sendText(message.from, 'Received your message');
+};
+
+// After: Contextual response
+webhookProcessor.onTextMessage = async (message) => {
+  await client.replyToMessage(
+    message.from,
+    message.id,
+    'Received your message'
+  );
+};
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Message Reactions"
+    icon="heart"
+    href="/messages/reactions"
+  >
+    Learn about reacting to messages with emojis
+  </Card>
+  <Card
+    title="Interactive Messages"
+    icon="hand-pointer"
+    href="/messages/interactive"
+  >
+    Explore buttons and lists for user engagement
+  </Card>
+  <Card
+    title="Webhook System"
+    icon="webhook"
+    href="/webhooks/overview"
+  >
+    Set up automated contextual responses
+  </Card>
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/api-reference/client"
+  >
+    View complete method documentation
+  </Card>
+</CardGroup>

@@ -1,6 +1,6 @@
 ---
 title: "Message Types Overview"
-description: "Complete guide to all 11 message types supported by the WhatsApp Client SDK"
+description: "Complete guide to all 13 message types supported by the WhatsApp Client SDK"
 ---
 
 ## Supported Message Types
@@ -83,6 +83,20 @@ description: "Complete guide to all 11 message types supported by the WhatsApp C
   >
     WebP animated and static stickers
   </Card>
+  <Card
+    title="Contextual Replies"
+    icon="reply"
+    href="/messages/contextual-replies"
+  >
+    Reply to specific messages with context
+  </Card>
+  <Card
+    title="Message Reactions"
+    icon="heart"
+    href="/messages/reactions"
+  >
+    React to messages with emojis
+  </Card>
 </CardGroup>
 
 ## Message Type Categories
@@ -110,6 +124,11 @@ Business communication:
 - **Template**: Pre-approved message templates for notifications
 - **Contact**: vCard contact information sharing
 
+### 5. Enhanced Communication
+Advanced interaction features:
+- **Contextual Replies**: Reply to specific messages with threaded context
+- **Message Reactions**: React to messages with emoji expressions
+
 ## Quick Reference
 
 ### Message Size Limits
@@ -126,6 +145,8 @@ Business communication:
 | Template | Varies | Template-defined |
 | Location | N/A | Name/address fields |
 | Contact | N/A | Multiple contacts per message |
+| Contextual Reply | Same as base type | Inherits from message type |
+| Reaction | N/A | Single emoji only |
 
 ### Common Properties
 
@@ -400,6 +421,20 @@ async function sendOrderConfirmation(to: string, order: Order) {
     href="/messages/interactive"
   >
     Create engaging buttons and list menus
+  </Card>
+  <Card
+    title="Contextual Replies"
+    icon="reply"
+    href="/messages/contextual-replies"
+  >
+    Reply to specific messages with threaded context
+  </Card>
+  <Card
+    title="Message Reactions"
+    icon="heart"
+    href="/messages/reactions"
+  >
+    Express emotions with emoji reactions
   </Card>
   <Card
     title="Webhook Handling"

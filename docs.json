@@ -38,7 +38,9 @@
               "messages/template",
               "messages/location",
               "messages/contacts",
-              "messages/stickers"
+              "messages/stickers",
+              "messages/contextual-replies",
+              "messages/reactions"
             ]
           }
         ]
@@ -61,6 +63,12 @@
             "group": "Core Components",
             "pages": [
               "api-reference/client"
+            ]
+          },
+          {
+            "group": "Communication Methods",
+            "pages": [
+              "api-reference/typing-indicators"
             ]
           },
           {
