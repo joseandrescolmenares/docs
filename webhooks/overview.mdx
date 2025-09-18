@@ -94,6 +94,7 @@ interface WebhookHandlers {
   onStickerMessage?: (message: ProcessedIncomingMessage & { media: MediaInfo }) => Promise<void>;
   onButtonClick?: (message: ProcessedIncomingMessage & { interactive: InteractiveInfo }) => Promise<void>;
   onListSelect?: (message: ProcessedIncomingMessage & { interactive: InteractiveInfo }) => Promise<void>;
+  onMessageStatusUpdate?: (statusUpdate: MessageStatusUpdate) => Promise<void>;
   onUnknownMessage?: (message: ProcessedIncomingMessage) => Promise<void>;
   onError?: (error: Error, message?: ProcessedIncomingMessage) => Promise<void>;
 }
@@ -436,35 +437,104 @@ const webhookProcessor = client.createWebhookProcessor({
 });
 ```
 
-## Next Steps
+## Message Status Updates
 
-<CardGroup cols={2}>
-  <Card
-    title="Webhook Processor"
-    icon="cog"
-    href="/webhooks/processor"
-  >
-    Deep dive into the webhook processor features
-  </Card>
-  <Card
-    title="Framework Integration"
-    icon="layers"
-    href="/examples/framework-integration"
-  >
-    Specific integration guides for different frameworks
-  </Card>
-  <Card
-    title="Webhook Security"
-    icon="shield"
-    href="/webhooks/security"
-  >
-    Security best practices and verification
-  </Card>
-  <Card
-    title="Examples"
-    icon="code"
-    href="/examples/framework-integration"
-  >
-    Real-world webhook implementation examples
-  </Card>
-</CardGroup>
+Track the delivery status of sent messages through webhook notifications.
+
+### onMessageStatusUpdate Handler
+
+```typescript
+const webhookProcessor = client.createWebhookProcessor({
+  onMessageStatusUpdate: async (statusUpdate) => {
+    console.log(`Message ${statusUpdate.id}: ${statusUpdate.status}`);
+
+    switch (statusUpdate.status) {
+      case 'sent':
+        console.log('✅ Message sent successfully');
+        break;
+      case 'delivered':
+        console.log('📱 Message delivered to device');
+        break;
+      case 'read':
+        console.log('👀 Message read by user');
+        break;
+      case 'failed':
+        console.log('❌ Message delivery failed');
+        if (statusUpdate.errors) {
+          console.error('Error details:', statusUpdate.errors);
+        }
+        break;
+    }
+  }
+});
+```
+
+### MessageStatusUpdate Interface
+
+```typescript
+interface MessageStatusUpdate {
+  id: string;                    // Message ID
+  status: MessageStatus;         // Current status
+  timestamp: string;             // Status timestamp
+  recipient_id: string;          // Recipient WhatsApp ID
+  phoneNumberId: string;         // Business phone number ID
+  businessId: string;            // Business account ID
+  conversation?: {
+    id: string;
+    origin?: { type: string; };
+  };
+  pricing?: {
+    pricing_model: string;
+    billable: boolean;
+    category: string;
+  };
+  errors?: Array<{
+    code: number;
+    title: string;
+    message?: string;
+    error_data?: { details: string; };
+  }>;
+}
+
+enum MessageStatus {
+  SENT = 'sent',
+  DELIVERED = 'delivered',
+  READ = 'read',
+  FAILED = 'failed'
+}
+```
+
+### Webhook Payload Format
+
+WhatsApp sends status updates in this format:
+
+```json
+{
+  "object": "whatsapp_business_account",
+  "entry": [{
+    "changes": [{
+      "value": {
+        "messaging_product": "whatsapp",
+        "metadata": {
+          "phone_number_id": "BUSINESS_PHONE_ID"
+        },
+        "statuses": [{
+          "id": "MESSAGE_ID",
+          "status": "read",
+          "timestamp": "EPOCH_TIMESTAMP",
+          "recipient_id": "USER_WHATSAPP_ID",
+          "conversation": {
+            "id": "CONVERSATION_ID",
+            "origin": { "type": "business_initiated" }
+          },
+          "pricing": {
+            "pricing_model": "CBP",
+            "billable": true,
+            "category": "business_initiated"
+          }
+        }]
+      }
+    }]
+  }]
+}
+```
