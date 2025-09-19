@@ -93,6 +93,7 @@
           {
             "group": "Guides",
             "pages": [
+              "guides/permanent-token",
               "guides/best-practices"
             ]
           }
