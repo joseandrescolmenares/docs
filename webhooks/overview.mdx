@@ -30,6 +30,12 @@ description: "Framework-agnostic webhook processing for receiving and handling W
   >
     Automatic webhook verification for security and authenticity
   </Card>
+  <Card
+    title="Message Buffer System"
+    icon="inbox"
+  >
+    Optional message grouping for better context and performance optimization
+  </Card>
 </CardGroup>
 
 ## Quick Start
@@ -301,6 +307,8 @@ app.all('/webhook', async (req, res) => {
 
 <Tip>
 For complete framework-specific examples including NestJS, Express, Next.js, Fastify, and AWS Lambda, see our [Framework Integration Examples](/examples/framework-integration).
+
+For message grouping and performance optimization, check out the [Message Buffer System](/webhooks/message-buffer).
 </Tip>
 
 ## Advanced Features

@@ -1,0 +1,173 @@
+---
+title: "Message Buffer System"
+description: "Group messages from the same phone number for better context and performance"
+---
+
+## Overview
+
+The Message Buffer System allows you to group messages from the same phone number during a configurable time period. This is completely **optional** and **backwards compatible**.
+
+## Why Use Message Buffer?
+
+### Common Use Cases:
+- **AI Chatbots**: Need complete conversation context
+- **Message Analysis**: Process related messages together
+- **Performance Optimization**: Reduce handler calls for message bursts
+- **Rate Limiting Protection**: Avoid overwhelming downstream services
+
+### Example Scenario:
+A user sends multiple messages in sequence:
+```
+User: "Hello"
+User: "I have a question"
+User: "How much does product X cost?"
+```
+
+**Without buffer**: Your handler executes 3 separate times
+**With buffer**: Your handler receives all 3 messages grouped for better context
+
+## Basic Usage
+
+### Without Buffer (Current Behavior)
+```javascript
+const processor = client.createWebhookProcessor({
+  onTextMessage: async (message) => {
+    // Receives 1 individual message
+    console.log(`Message: "${message.text}" from ${message.from}`);
+  }
+});
+```
+
+### With Buffer Enabled
+```javascript
+const processor = client.createWebhookProcessor({
+  enableBuffer: true,        // ← Just add this
+  bufferTimeMs: 10000,      // Optional: wait 10 seconds
+  maxBatchSize: 50,         // Optional: max 50 messages per batch
+
+  onTextMessage: async (messages) => {
+    // Can receive 1 message or array of messages
+    if (Array.isArray(messages)) {
+      console.log(`📦 Batch of ${messages.length} messages:`);
+      messages.forEach((msg, i) => {
+        console.log(`  ${i+1}. "${msg.text}" from ${msg.from}`);
+      });
+    } else {
+      console.log(`📨 Single message: "${messages.text}"`);
+    }
+  }
+});
+```
+
+## Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enableBuffer` | `boolean` | `false` | Enables the buffer system |
+| `bufferTimeMs` | `number` | `5000` | Time in ms to group messages |
+| `maxBatchSize` | `number` | `100` | Maximum messages per batch |
+
+## Practical Example
+
+### Smart Chatbot
+```javascript
+const processor = client.createWebhookProcessor({
+  enableBuffer: true,
+  bufferTimeMs: 8000, // 8 seconds to capture complete conversation
+
+  onTextMessage: async (messages) => {
+    const phoneNumber = Array.isArray(messages) ? messages[0].from : messages.from;
+
+    if (Array.isArray(messages)) {
+      // Multiple messages - analyze as conversation
+      const conversation = messages.map(msg => msg.text).join('\n');
+
+      // Send to AI for contextual analysis
+      const response = await analyzeConversation(conversation);
+      await client.sendText(phoneNumber, response);
+    } else {
+      // Single message - quick response
+      await client.sendText(phoneNumber, `Received: "${messages.text}"`);
+    }
+  }
+});
+```
+
+## All Message Types Supported
+
+The buffer system works with **all WhatsApp message types**:
+
+```javascript
+const processor = client.createWebhookProcessor({
+  enableBuffer: true,
+
+  onTextMessage: async (messages) => {
+    // Handle text messages (single or batch)
+  },
+
+  onImageMessage: async (messages) => {
+    // Handle images (single or batch)
+  },
+
+  onStickerMessage: async (messages) => {
+    // Handle stickers (single or batch)
+  },
+
+  onButtonClick: async (messages) => {
+    // Handle button clicks (single or batch)
+  }
+  // ... all other message types
+});
+```
+
+
+### 🚀 To Enable Buffer
+Just add `enableBuffer: true`:
+
+```javascript
+// Minimal change to enable buffer
+const processor = client.createWebhookProcessor({
+  enableBuffer: true,  // ← Only this
+  onTextMessage: async (messages) => {
+    // Now handles both single messages and arrays
+    const msgs = Array.isArray(messages) ? messages : [messages];
+
+    for (const msg of msgs) {
+      await client.sendText(msg.from, `Echo: ${msg.text}`);
+    }
+  }
+});
+```
+
+## How It Works
+
+1. **Message arrives** → Check if buffer exists for that phone number
+2. **Buffer exists** → Add message and restart timer
+3. **Buffer full** → Process immediately (maxBatchSize reached)
+4. **Timer expires** → Process accumulated batch
+5. **Handler receives** → Array of messages grouped by phone number
+
+## Best Practices
+
+### Timing Configuration:
+- **Quick response**: `bufferTimeMs: 3000-5000` (3-5 seconds)
+- **Contextual analysis**: `bufferTimeMs: 8000-12000` (8-12 seconds)
+- **Batch processing**: `bufferTimeMs: 15000-30000` (15-30 seconds)
+
+### Batch Size:
+- **Chatbots**: `maxBatchSize: 10-20` (short conversations)
+- **Analysis**: `maxBatchSize: 50-100` (medium batches)
+- **Bulk processing**: `maxBatchSize: 100+` (large batches)
+
+### Type Detection:
+```javascript
+onTextMessage: async (messages) => {
+  if (Array.isArray(messages)) {
+    // Batch of messages
+    console.log(`Processing ${messages.length} messages in batch`);
+  } else {
+    // Single message
+    console.log(`Processing individual message`);
+  }
+}
+```

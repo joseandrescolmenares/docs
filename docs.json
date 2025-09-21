@@ -51,7 +51,8 @@
           {
             "group": "Webhooks",
             "pages": [
-              "webhooks/overview"
+              "webhooks/overview",
+              "webhooks/message-buffer"
             ]
           }
         ]
