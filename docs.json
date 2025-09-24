@@ -95,7 +95,8 @@
             "group": "Guides",
             "pages": [
               "guides/permanent-token",
-              "guides/best-practices"
+              "guides/best-practices",
+              "guides/error-handling"
             ]
           }
         ]

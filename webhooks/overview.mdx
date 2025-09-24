@@ -64,6 +64,7 @@ const webhookProcessor = client.createWebhookProcessor({
   
   onError: async (error, message) => {
     console.error('Webhook error:', error.message);
+    // For enhanced error handling, see: /guides/error-handling
   }
 });
 ```
@@ -408,8 +409,9 @@ const webhookProcessor = client.createWebhookProcessor({
   onError: async (error, message) => {
     // Log error for monitoring
     console.error('Webhook error:', { error: error.message, messageId: message?.id });
-    
-    // Notify monitoring service
+
+    // For comprehensive error handling and monitoring patterns
+    // see our Enhanced Error Handling Guide: /guides/error-handling
     await notifyErrorService(error, message);
   }
 });
